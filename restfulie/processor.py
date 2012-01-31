@@ -6,7 +6,7 @@ import restfulie
 
 
 class RequestProcessor(object):
-    def execute(self, chain, request, env={}):
+    def execute(self, callback, chain, request, env={}):
         raise NotImplementedError('Subclasses must implement this method')
 
 
@@ -14,11 +14,11 @@ class AuthenticationProcessor(RequestProcessor):
     """
     Processor responsible for making HTTP simple auth
     """
-    def execute(self, chain, request, env={}):
+    def execute(self, callback, chain, request, env={}):
         if request.credentials is not None:
             encoded_credentials = self._encode_credentials(request.credentials)
             request.headers['authorization'] = "Basic %s" % encoded_credentials
-        return chain.follow(request, env)
+        return chain.follow(callback, request, env)
 
     def _encode_credentials(self, credentials):
         username = credentials[0]
@@ -36,33 +36,29 @@ class ExecuteRequestProcessor(RequestProcessor):
     def __init__(self):
         self.http = httplib2.Http()
 
-    def execute(self, chain, request, env={}):
+    def execute(self, callback, chain, request, env={}):
         if "body" in env:
             response = self.http.request(request.uri, request.verb,
                                          env.get("body"), request.headers)
         else:
             response = self.http.request(request.uri, request.verb,
                                          headers=request.headers)
-
         resource = Response(response)
-        if request.is_async:
-            request.pipe.send(resource)
-
-        return resource
+        return callback(resource) if callable(callback) else response
 
 
 class PayloadMarshallingProcessor(RequestProcessor):
     """
     Processor responsible for marshalling the payload in environment.
     """
-    def execute(self, chain, request, env={}):
+    def execute(self, callback, chain, request, env={}):
         if "payload" in env:
             content_type = request.headers.get("Content-Type")
             marshaller = Converters.marshaller_for(content_type)
             env["body"] = marshaller.marshal(env["payload"])
             del(env["payload"])
 
-        return chain.follow(request, env)
+        return chain.follow(callback, request, env)
 
 
 class RedirectProcessor(RequestProcessor):
@@ -79,14 +75,13 @@ class RedirectProcessor(RequestProcessor):
                     result.headers.get("location"))
         return None
 
-    def execute(self, chain, request, env={}):
-        result = chain.follow(request, env)
-        location = self.redirect_location_for(result)
-        if location:
-            return self.redirect(location,
-                                 request.headers.get("Content-Type"))
+    def execute(self, callback, chain, request, env={}):
+        def _on_resource(resource):
+            location = self.redirect_location_for(resource)
+            if not location:
+                return callback(resource) if callable(callback) else resource
+            # redirect
+            return restfulie.Restfulie.at(location).as_(request_type).get(callback)
+        # chain
+        return chain.follow(_on_resource, request, env)
 
-        return result
-
-    def redirect(self, location, request_type):
-        return restfulie.Restfulie.at(location).as_(request_type).get()

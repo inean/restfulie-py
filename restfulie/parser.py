@@ -6,7 +6,6 @@ class Parser(object):
     def __init__(self, processors):
         self.processors = processors
 
-    def follow(self, request, env={}):
+    def follow(self, callback, request, env={}):
         processor = self.processors.pop(0)
-        result = processor.execute(self, request, env)
-        return result
+        return processor.execute(callback, self, request, env)
