@@ -11,9 +11,11 @@ class Response(object):
 
     def __init__(self, response):
         self.response = response
-        self.headers = self.response[0]
-        self.code = self.response[0]['status']
-        self.body = self.response[1]
+        self.headers = self.response.headers
+        self.code = self.response.code
+        # FIXME: We don't call to self.response.body so it isn't
+        # created on demand
+        self.body = self.response.buffer
 
     def resource(self):
         """
@@ -63,18 +65,3 @@ class Response(object):
                re.search('type="(.*)"', rest).group(1))
 
         return Link(href=uri, rel=rel, content_type=tpe)
-
-
-class LazyResponse(object):
-    """
-    Lazy response for async calls
-    """
-
-    def __init__(self, response_pipe):
-        self._response_pipe = response_pipe
-
-    def __getattr__(self, attr):
-        if self._response_pipe is not None:
-            self._response = self._response_pipe.recv()
-            self._response_pipe = None
-        return getattr(self._response, attr)

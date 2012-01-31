@@ -1,7 +1,7 @@
 from base64 import encodestring
-import httplib2
 from response import Response
 from converters import Converters
+from tornado.httpclient import HTTPClient, AsyncHTTPClient
 import restfulie
 
 
@@ -33,18 +33,27 @@ class ExecuteRequestProcessor(RequestProcessor):
     Processor responsible for getting the body from environment and
     making a request with it.
     """
-    def __init__(self):
-        self.http = httplib2.Http()
+    def _sync(self, chain, request, env={}):
+        response = HTTPClient().fetch(
+            request.uri,
+            method=request.verb,
+            body=env.get("body"), 
+            headers=request.headers)
+        return Response(response)
+
+    def _async(self, callback, chain, request, env={}):
+        AsyncHTTPClient().fetch(
+            request.uri,
+            lambda x: callback(Response(x)),
+            method=request.verb,
+            body=env.get("body"), 
+            headers=request.headers)
+        return None
 
     def execute(self, callback, chain, request, env={}):
-        if "body" in env:
-            response = self.http.request(request.uri, request.verb,
-                                         env.get("body"), request.headers)
-        else:
-            response = self.http.request(request.uri, request.verb,
-                                         headers=request.headers)
-        resource = Response(response)
-        return callback(resource) if callable(callback) else response
+        return self._sync(chain, request, env) \
+            if not callable(callback)          \
+            else self._async(callback, chain, request, env)
 
 
 class PayloadMarshallingProcessor(RequestProcessor):
@@ -77,11 +86,11 @@ class RedirectProcessor(RequestProcessor):
 
     def execute(self, callback, chain, request, env={}):
         def _on_resource(resource):
+            assert callable(callback)
             location = self.redirect_location_for(resource)
-            if not location:
-                return callback(resource) if callable(callback) else resource
-            # redirect
-            return restfulie.Restfulie.at(location).as_(request_type).get(callback)
+            return callback(resource) if not location else \
+                restfulie.Restfulie.at(location).as_(request_type).get(callback)
         # chain
-        return chain.follow(_on_resource, request, env)
+        return chain.follow(_on_resource, request, env)    \
+            if callable(callback) else chain.follow(callback, request, env)
 

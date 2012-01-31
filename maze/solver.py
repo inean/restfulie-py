@@ -1,4 +1,5 @@
 from restfulie import Restfulie
+from tornado.ioloop import IOLoop
 
 found = False
 visited = {}
@@ -13,13 +14,18 @@ def solve(current):
             link = current.link(direction)
             if not found and link and not visited.get(link.href):
                 visited[link.href] = True
-                solve(link.follow().get())
+                link.follow().get(solve)
 
     else:
+        IOLoop.instance().stop()
         print "FOUND!"
         found = True
 
+# syncronous invoke
 current = Restfulie.at('http://amundsen.com/examples/mazes/2d/five-by-five/').accepts("application/xml").get()
 
+# async invoke
 solve(current)
 
+# start IOLoop
+IOLoop.instance().start()

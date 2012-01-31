@@ -1,4 +1,3 @@
-from response import LazyResponse
 from parser import Parser
 
 class Request(object):
