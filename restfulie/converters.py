@@ -1,6 +1,5 @@
 import json
 from xml.etree import ElementTree
-from opensearch import OpenSearchDescription
 from resources.xml import XMLResource
 from resources.json import JsonResource
 
@@ -82,19 +81,6 @@ class XmlConverter(object):
         return XMLResource(e)
 
 
-class OpenSearchConverter(object):
-    def marshal(self, content):
-        return XmlConverter().marshal(content)
-
-    def unmarshal(self, content):
-        """
-        Produces an OpenSearchDescription object from an
-        OpenSearch XML
-        """
-        e_tree = ElementTree.fromstring(content)
-        return OpenSearchDescription(e_tree)
-
-
 class PlainConverter(object):
     def marshal(self, content):
         """
@@ -115,5 +101,4 @@ Converters.register('text/plain', PlainConverter())
 Converters.register('text/json', JsonConverter())
 Converters.register('application/json', JsonConverter())
 Converters.register('json', JsonConverter())
-Converters.register('application/opensearchdescription+xml',
-                    OpenSearchConverter())
+
