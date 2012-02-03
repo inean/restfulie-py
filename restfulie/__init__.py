@@ -1,4 +1,6 @@
-from restfulie import Restfulie
-from pkg_resources import declare_namespace
+"""Basic Restufl module with support for hypermedia"""
 
-declare_namespace(__name__)
+#pylint: disable-msg=W0401
+from __future__ import absolute_import
+from .resources import *
+

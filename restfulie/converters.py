@@ -1,104 +1,97 @@
-import json
-from xml.etree import ElementTree
-from resources.xml import XMLResource
-from resources.json import JsonResource
+#!/usr/bin/env python
+# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+
+"""
+converter
+"""
+
+from __future__ import absolute_import
+
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__license__ = "See LICENSE file for details"
+
+# Import here any required modules.
+
+__all__ = ['Converters', 'ConverterMixin']
+
+# Project requirements
+
+# local submodule requirements
+
+class ConverterError(Exception):
+    """Resource exception"""
 
 class Converters(object):
-    """
-    Utility methods for converters.
-    """
+    """Utility methods for converters."""
 
     types = {}
 
     @staticmethod
     def register(a_type, converter):
-        """
-        Register a converter for the given type.
-        """
+        """Register a converter for the given type"""
         Converters.types[a_type] = converter
 
     @staticmethod
     def marshaller_for(a_type):
-        """
-        Return a converter for the given type.
-        """
-        return Converters.types.get(a_type) or XmlConverter()
-
-
-class JsonConverter(object):
-    """
-    Converts objects from and to JSON.
-    """
-
-    def marshal(self, content):
-        """
-        Produces a JSON representation of the given content.
-        """
-        return json.dumps(content)
-
-    def unmarshal(self, json_content):
-        """
-        Produces an object for a given JSON content.
-        """
-        return JsonResource(json.loads(json_content))
-
-class XmlConverter(object):
-    """
-    Converts objects from and to XML.
-    """
-
-    def marshal(self, content):
-        """
-        Produces a XML representation of the given content.
-        """
-        return ElementTree.tostring(self._dict_to_etree(content))
-
-    def _dict_to_etree(self, content):
-        """
-        Receives a dictionary and converts to an ElementTree
-        """
-        tree = ElementTree.Element(content.keys()[0])
-        self._dict_to_etree_rec(content[content.keys()[0]], tree)
-        return tree
-
-    def _dict_to_etree_rec(self, content, tree):
-        """
-        Auxiliar function of _dict_to_etree_rec
-        """
-        if type(content) == dict:
-            for key, value in content.items():
-                e = ElementTree.Element(key)
-                self._dict_to_etree_rec(value, e)
-                tree.append(e)
+        """Return a converter for the given type"""
+        if type(a_type) in (str, unicode,):
+            # common case. Throw a key error exception if no valid one
+            # has been registered"
+            if ";" not in a_type:
+                return Converters.types[a_type]
+            # Passed a composed string (';' separated)
+            a_type, key = a_type.split(";"), a_type
         else:
-            tree.text = str(content)
+            # Passed a list
+            assert len(a_type) > 0
+            a_type, key = a_type, ";".join(a_type)
 
-    def unmarshal(self, content):
-        """
-        Produces an ElementTree object for a given XML content.
-        """
-        e = ElementTree.fromstring(content)
-        return XMLResource(e)
+        # Dinamically, create a valid converter if required for this
+        # kind of element.Converters are stateless,
+        return Converters.types.setdefault(   \
+            key,                              \
+            Converters.types[a_type[0]].__class__(a_type[1:]))
 
 
-class PlainConverter(object):
+class MetaConverter(type):
+    """Converter Metaclass"""
+
+    def __init__(mcs, name, bases, dct):
+        type.__init__(mcs, name, bases, dct)
+        if name.endswith("Converter"):
+            for a_type in mcs.types:
+                Converters.register(a_type, mcs())
+
+
+class ConverterMixin(object):
+    """
+    Abstract class to define converter classes. This class has support
+    to create chained converters
+    """
+
+    __metaclass__ = MetaConverter
+
+    def __init__(self, a_type_list=None):
+        # Store next converter in chain
+        self._chain = None
+        assert not a_type_list or hasattr('__iter__', a_type_list)
+        # Allow this class to also be used like a dead end
+        if a_type_list and len(a_type_list) > 1:
+            self.chain = Converters.marshaller_for(list(a_type_list)[1:])
+
     def marshal(self, content):
-        """
-        Does nothing
-        """
-        return content
+        """Does nothing"""
+        return content if not self.chain else self.chain.marshal(content)
 
     def unmarshal(self, content):
-        """
-        Returns content without modification
-        """
-        return content
+        """Returns content without modification"""
+        return content if not self.chain else self.chain.marshal(content)
 
-Converters.register('application/xml', XmlConverter())
-Converters.register('text/xml', XmlConverter())
-Converters.register('xml', XmlConverter())
-Converters.register('text/plain', PlainConverter())
-Converters.register('text/json', JsonConverter())
-Converters.register('application/json', JsonConverter())
-Converters.register('json', JsonConverter())
+            
+class PlainConverter(ConverterMixin):
+    """Dummy converter to plain text"""
 
+    types = ['text/plain']
+
+    def __init__(self):
+        ConverterMixin.__init__(self)

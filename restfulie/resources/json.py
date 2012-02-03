@@ -1,53 +1,101 @@
-from restfulie.resources import Resource
-from restfulie.links import Links, Link
+#!/usr/bin/env python
+# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+
+"""
+json
+
+Json converter and resource
+"""
+
+from __future__ import absolute_import
+
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__license__ = "See LICENSE file for details"
+
+# Import here any required modules.
+from itertools import ifilter
+import simplejson as json
+
+__all__ = []
+
+# Project requirements
+
+# local submodule requirements
+from ..resource import Resource
+from ..links import Links, Link
+from ..converters import ConverterMixin
 
 class JsonResource(Resource):
-    """
-    This resource is returned when a JSON is unmarshalled.
-    """
+    """This resource is returned when a JSON is unmarshalled"""
 
-    def __init__(self, dict_):
-        """
-        JsonResource attributes can be accessed with 'dot'.
-        """
-        links = self._parse_links(dict_)
-        self._dict = dict_
-        self._links = Links(links)
+    def __init__(self, data):
+        """JsonResource attributes can be accessed with 'dot'"""
+        super(JsonResource, self).__init__()
 
-        for key, value in dict_.items():
-            if isinstance(value, (list, tuple)):
-                d = [JsonResource(x) if isinstance(x, dict) else x for x in value]
-                setattr(self, key, d)
+        assert isinstance(data, dict)
+        for key, value in ifilter(lambda x: x[0] != 'link', data.iteritems()):
+
+            if isinstance(value, (list, tuple,)):
+                setattr(self, key, [self.parse(element) for element in value])
             else:
-                d = JsonResource(value) if isinstance(value, dict) else value
-                setattr(self, key, d)
+                setattr(self, key, self.parse(value))
 
-    def _find_dicts_in_dict(self, structure):
-        """
-        Get all dictionaries on a structure and returns a list of it.
-        """
+        # store dict
+        self._dict  = data
+        self._links = None
+
+    def __len__(self):
+        return len(self._dict)
+
+    def _find_dicts_in_dict(self, data):
+        """Get all dictionaries on a structure and returns a list of it"""
         dicts = []
-        if isinstance(structure, dict):
-            dicts.append(structure)
-            for k, v in structure.items():
-                dicts.extend(self._find_dicts_in_dict(v))
+        if isinstance(data, dict):
+            dicts.append(data)
+            for value in data.itervalues():
+                dicts.extend(self._find_dicts_in_dict(value))
         return dicts
 
-    def _parse_links(self, dict_):
-        """
-        Find links on JSON dictionary.
-        """
-        for d in self._find_dicts_in_dict(dict_):
-            if 'link' in d:
-                return [Link(href=link.get('href'), rel=link.get('rel'), content_type=link.get('type')) for link in d['link']]
-
+    def _parse_links(self, data):
+        """Find links on JSON dictionary"""
+        dct_filter = lambda x: 'link' in x
+        for dct in ifilter(dct_filter, self._find_dicts_in_dict(data)):
+            #Set a json as the default content-type for this link if
+            #no one has been set by the server
+            #pylint:disable-msg=W0106
+            [link.setdefault('type', 'json') for link in dct['link']]
+            return [Link(link) for link in dct['link']]
         return []
-
-    def links(self):
-        return self._links
 
     def link(self, rel):
         return self.links().get(rel)
+
+    def links(self):
+        if not self._links:
+            self._links = Links(self._parse_links(self._dict))
+        return self._links
         
-    def __len__(self):
-        return len(self._dict)        
+    @classmethod
+    def parse(cls, value):
+        """Pyhtonize a Json value"""
+        return cls(value) if isinstance(value, dict) else value
+
+class JsonConverter(ConverterMixin):
+    """Converts objects from and to JSON"""
+
+    types = ['application/json', 'text/json', 'json']
+
+    def __init__(self):
+        ConverterMixin.__init__(self)
+
+    #pylint: disable-msg=R0201
+    def marshal(self, content):
+        """Produces a JSON representation of the given content"""
+        return json.dumps(content)
+
+    #pylint: disable-msg=R0201
+    def unmarshal(self, json_content):
+        """Produces an object for a given JSON content"""
+        return JsonResource(json.loads(json_content.read()))
+
+
