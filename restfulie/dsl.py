@@ -1,30 +1,61 @@
-from processor import RedirectProcessor, PayloadMarshallingProcessor, \
-    ExecuteRequestProcessor, AuthenticationProcessor
-from request import Request
+#!/usr/bin/env python
+# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+
+"""
+configuration
+"""
+
+from __future__ import absolute_import
+
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__license__ = "See LICENSE file for details"
+
+# Import here any required modules.
+
+__all__ = ['Configuration']
+
+# Project requirements
+from tornado.httputil import HTTPHeaders
+
+# local submodule requirements
+from .processor import tornado_chain
+from .request import Request
 
 
-class Dsl(object):
-    """
-    Configuration object for requests at a given URI.
-    """
+class Configuration(object):
+    """Configuration object for requests at a given URI"""
 
-    HTTP_VERBS = ['delete', 'get', 'head', 'options', 'patch', 'post', 'put',
-                  'trace']
+    HTTP_VERBS = [
+        'delete',
+        'get',
+        'head',
+        'options',
+        'patch',
+        'post',
+        'put',
+        'trace'
+        ]
 
-    def __init__(self, uri):
-        """
-        Initialize the configuration for requests at the given URI.
-        """
+    FLAVORS = {
+        'json': {
+            'content-type': 'application/json',
+            'accept':       'application/json'
+            },
+        'xml': {
+            'content-type': 'application/xml',
+            'accept':       'application/xml'
+            },
+        }
+
+    def __init__(self, uri, flavor='json', chain=None):
+        """Initialize the configuration for requests at the given URI"""
+        self.uri         = uri
+        self.headers     = HTTPHeaders(self.FLAVORS[flavor])
+        self.processors  = chain or tornado_chain
         self.credentials = None
-        self.uri = uri
-        self.processors = [AuthenticationProcessor(),
-                           RedirectProcessor(),
-                           PayloadMarshallingProcessor(),
-                           ExecuteRequestProcessor(), ]
-        self.headers = {'Content-Type': 'application/xml',
-                        'Accept': 'application/xml'}
+        self.verb        = None
 
-    def __getattr__(self, name):
+    def __getattr__(self, value):
         """
         Perform an HTTP request. This method supports calls to the following
         methods: delete, get, head, options, patch, post, put, trace
@@ -32,43 +63,30 @@ class Dsl(object):
         Once the HTTP call is performed, a response is returned (unless the
         async method is used).
         """
-        if (self._is_verb(name)):
-            self.verb = name.upper()
-            return Request(self)
-        else:
-            raise AttributeError(name)
-
-    def _is_verb(self, name):
-        """
-        Checks if a string is a HTTP verb
-        """
-        return name in self.HTTP_VERBS
+        if (value not in self.HTTP_VERBS):
+            raise AttributeError(value)
+        # store current verb to be passed to Request
+        self.verb = value.upper()
+        return Request(self)
 
     def use(self, feature):
-        """
-        Register a feature at this configuration.
-        """
+        """Register a feature (processor) at this configuration"""
         self.processors.insert(0, feature)
         return self
 
     def as_(self, content_type):
-        """
-        Set up the Content-Type
-        """
-        if content_type:
-            self.headers["Content-Type"] = content_type
+        """Set up the Content-Type"""
+        assert content_type
+        self.headers["content-type"] = content_type
         return self
 
     def accepts(self, content_type):
-        """
-        Configure the accepted response format.
-        """
-        self.headers['Accept'] = content_type
+        """Configure the accepted response format"""
+        self.headers['accept'] = content_type + ',' + self.headers['accept'] \
+            if 'accept' in self.headers else content_type
         return self
 
     def auth(self, username, password, method='simple'):
-        """
-        Authentication feature. It does simple HTTP auth
-        """
+        """Authentication feature. It does simple HTTP auth"""
         self.credentials = (username, password, method)
         return self
