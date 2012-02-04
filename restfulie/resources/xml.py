@@ -1,5 +1,27 @@
-from restfulie.resources import Resource
-from restfulie.links import Links, Link
+#!/usr/bin/env python
+# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+
+"""
+xml
+
+XML converter and resource
+"""
+
+from __future__ import absolute_import
+
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__license__ = "See LICENSE file for details"
+
+# Import here any required modules.
+from xml.etree import ElementTree
+
+__all__ = []
+
+# local submodule requirements
+from ..resource import Resource
+from ..links import Links, Link
+from ..converters import ConverterMixin
+
 
 class XMLResource(Resource):
     """
@@ -7,6 +29,8 @@ class XMLResource(Resource):
     """
 
     def __init__ (self, element_tree):
+        super(XMLResource, self).__init__()
+
         self.element_tree = element_tree
         self._links = Links(self._parse_links())
         self._enhance_element_tree()
@@ -18,13 +42,14 @@ class XMLResource(Resource):
         setattr(self, "tag", self.element_tree.tag)
 
         for root_child in list(self.element_tree):
-            if root_child.tag != 'link':
+            tag = root_child.tag
+            if tag != 'link':
                 if len(self.element_tree.findall(root_child.tag)) > 1:
-                    setattr(self, root_child.tag, self.element_tree.findall(root_child.tag))
+                    setattr(self, tag, self.element_tree.findall(tag))
                 elif len(list(root_child)) == 0:
-                    setattr(self, root_child.tag, root_child.text)
+                    setattr(self, tag, root_child.text)
                 else:
-                    setattr(self, root_child.tag, self.element_tree.find(root_child.tag))
+                    setattr(self, tag, self.element_tree.find(tag))
 
         for element in self.element_tree.getiterator():
             for child in list(element):
@@ -41,12 +66,12 @@ class XMLResource(Resource):
         """
         links = []
         for element in self.element_tree.getiterator('link'):
-            link = Link(href=element.attrib.get('href'),
-                        rel=element.attrib.get('rel'),
-                        content_type=element.attrib.get('type') or 'application/xml')
+            link = Link(
+                href=element.attrib.get('href'),
+                rel=element.attrib.get('rel'),
+                content_type=element.attrib.get('type') or 'application/xml')
 
             links.append(link)
-
         return links
 
     def links(self):
@@ -54,3 +79,49 @@ class XMLResource(Resource):
 
     def link(self, rel):
         return self.links().get(rel)
+
+
+
+class XmlConverter(ConverterMixin):
+    """
+    Converts objects from and to XML.
+    """
+    
+    types = ['application/xml', 'text/xml', 'xml']
+
+    def __init__(self):
+        ConverterMixin.__init__(self)
+
+    def marshal(self, content):
+        """
+        Produces a XML representation of the given content.
+        """
+        return ElementTree.tostring(self._dict_to_etree(content))
+
+    def _dict_to_etree(self, content):
+        """
+        Receives a dictionary and converts to an ElementTree
+        """
+        tree = ElementTree.Element(content.keys()[0])
+        self._dict_to_etree_rec(content[content.keys()[0]], tree)
+        return tree
+
+    def _dict_to_etree_rec(self, content, tree):
+        """
+        Auxiliar function of _dict_to_etree_rec
+        """
+        if type(content) == dict:
+            for key, value in content.items():
+                element = ElementTree.Element(key)
+                self._dict_to_etree_rec(value, element)
+                tree.append(element)
+        else:
+            tree.text = str(content)
+
+    def unmarshal(self, content):
+        """
+        Produces an ElementTree object for a given XML content.
+        """
+        element = ElementTree.fromstring(content)
+        return XMLResource(element)
+
