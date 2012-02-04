@@ -1,67 +1,65 @@
-from converters import Converters
-import re
+#!/usr/bin/env python
+# -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
-from links import Links, Link
+"""
+request
+"""
+
+from __future__ import absolute_import
+
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__license__ = "See LICENSE file for details"
+
+# Import here any required modules.
+
+__all__ = ['Response']
+
+# Project requirements
+from .converters import Converters
+from .links import HeaderLinks
 
 
 class Response(object):
-    """
-    Handle and parse a HTTP response
-    """
+    """Handle and parse a HTTP response"""
 
     def __init__(self, response):
-        self.response = response
-        self.headers = self.response.headers
-        self.code = self.response.code
-        # FIXME: We don't call to self.response.body so it isn't
-        # created on demand
-        self.body = self.response.buffer
+        self._response = response
+        self._resource = None
+        self._links    = None
 
+    @property
+    def headers(self):
+        """Returns HTTP headers"""
+        return self._response.headers
+
+    @property
+    def code(self):
+        """Returns response code"""
+        return self._response.code
+
+    @property
+    def body(self):
+        """Returns a formatted body"""
+        return self._response.body
+
+    @property
     def resource(self):
-        """
-        Returns the unmarshalled object of the response body
-        """
-        if 'content-type' in self.response[0]:
-            contenttype = self.response[0]['content-type'].split(';')[0]
-        else:
-            contenttype = None
+        """Unmarshalled object of the response body"""
+        if not self._resource:
+            content_type = self._response.headers.get_list('content-type')[0]
+            converter = Converters.marshaller_for(content_type)
+            self._resource = converter.unmarshal(self._response.buffer)
+        return self._resource
 
-        converter = Converters.marshaller_for(contenttype)
-        return converter.unmarshal(self.body)
-
+    @property
     def links(self):
-        """
-        Returns the Links of the header
-        """
-        r = self._link_header_to_array()
-        return Links(r)
+        """Returns the Links of the header"""
+        if not self._links:
+            self._links = self.resource.links
+            self._links.update(HeaderLinks(self._response.headers))
+        return self._links
 
     def link(self, rel):
-        """
-        Get a link with 'rel' from header
-        """
-        return self.links().get(rel)
+        """Get a link with 'rel' from header"""
+        return self.links.get(rel)
 
-    def _link_header_to_array(self):
-        """
-        Split links in headers and return a list of dicts
-        """
-        values = self.headers['link'].split(',')
-        links = []
-        for link_string in values:
-            links.append(self._string_to_link(link_string))
-
-        return links
-
-    def _string_to_link(self, l):
-        """
-        Parses a link header string to a dictionary
-        """
-        uri = re.search('<([^>]*)', l) and re.search('<([^>]*)', l).group(1)
-        rest = re.search('.*>(.*)', l) and re.search('.*>(.*)', l).group(1)
-        rel = (re.search('rel=(.*)', rest) and
-               re.search('rel="(.*)"', rest).group(1))
-        tpe = (re.search('type=(.*)', rest) and
-               re.search('type="(.*)"', rest).group(1))
-
-        return Link(href=uri, rel=rel, content_type=tpe)
