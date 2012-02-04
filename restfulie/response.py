@@ -55,7 +55,7 @@ class Response(object):
     def links(self):
         """Returns the Links of the header"""
         if not self._links:
-            self._links = self.resource.links
+            self._links = self.resource.links()
             self._links.update(HeaderLinks(self._response.headers))
         return self._links
 
