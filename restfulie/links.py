@@ -38,8 +38,8 @@ class Link(object):
 
     def follow(self):
         """Return a DSL object with the Content-Type set"""
-        from .dsl import Dsl
-        return Dsl(self.href).as_(self.content_type)
+        from .configuration import Configuration
+        return Configuration(self.href).as_(self.content_type)
 
 
 #pylint: disable-msg=R0903
