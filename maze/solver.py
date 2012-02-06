@@ -1,4 +1,4 @@
-from restfulie import Restfulie
+from restfulie.restfulie import Restfulie
 from tornado.ioloop import IOLoop
 
 found = False

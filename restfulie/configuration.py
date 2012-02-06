@@ -45,12 +45,17 @@ class Configuration(object):
             'content-type': 'application/xml',
             'accept':       'application/xml'
             },
+        'plain': {
+            'content-type': 'text/plain',
+            'accept':       'text/plain',
+            },
         }
 
-    def __init__(self, uri, flavor='json', chain=None):
+    def __init__(self, uri, flavors=None, chain=None):
         """Initialize the configuration for requests at the given URI"""
         self.uri         = uri
-        self.headers     = HTTPHeaders(self.FLAVORS[flavor])
+        self.headers     = HTTPHeaders()
+        self.flavors     = flavors or ['json', 'xml']
         self.processors  = chain or tornado_chain
         self.credentials = None
         self.verb        = None
@@ -65,8 +70,14 @@ class Configuration(object):
         """
         if (value not in self.HTTP_VERBS):
             raise AttributeError(value)
+
         # store current verb to be passed to Request
         self.verb = value.upper()
+
+        # set accept if it wasn't set previously
+        if 'accept' not in self.headers:
+            for flavor in self.flavors:
+                self.headers.add('accept', self.FLAVORS[flavor]['accept'])
         return Request(self)
 
     def use(self, feature):
@@ -77,12 +88,13 @@ class Configuration(object):
     def as_(self, content_type):
         """Set up the Content-Type"""
         assert content_type
+        self.headers["accept"] = content_type
         self.headers["content-type"] = content_type
         return self
 
     def accepts(self, content_type):
         """Configure the accepted response format"""
-        self.headers['accept'] = content_type + ',' + self.headers['accept'] \
+        self.headers['accept'] = content_type + ', ' + self.headers['accept'] \
             if 'accept' in self.headers else content_type
         return self
 

@@ -25,16 +25,15 @@ from ..resource import Resource
 from ..links import Links, Link
 from ..converters import ConverterMixin
 
+
 class JsonResource(Resource):
     """This resource is returned when a JSON is unmarshalled"""
 
     def __init__(self, data):
         """JsonResource attributes can be accessed with 'dot'"""
         super(JsonResource, self).__init__()
-
         assert isinstance(data, dict)
         for key, value in ifilter(lambda x: x[0] != 'link', data.iteritems()):
-
             if isinstance(value, (list, tuple,)):
                 setattr(self, key, [self.parse(element) for element in value])
             else:

@@ -66,11 +66,11 @@ class XMLResource(Resource):
         """
         links = []
         for element in self.element_tree.getiterator('link'):
-            link = Link(
-                href=element.attrib.get('href'),
-                rel=element.attrib.get('rel'),
-                content_type=element.attrib.get('type') or 'application/xml')
-
+            link = Link({
+                    'href': element.attrib.get('href'),
+                    'rel':  element.attrib.get('rel'),
+                    'type': element.attrib.get('type') or 'application/xml',
+            })
             links.append(link)
         return links
 
@@ -122,6 +122,6 @@ class XmlConverter(ConverterMixin):
         """
         Produces an ElementTree object for a given XML content.
         """
-        element = ElementTree.fromstring(content)
+        element = ElementTree.fromstring(content.read())
         return XMLResource(element)
 

@@ -77,21 +77,12 @@ class ConverterMixin(object):
         assert not a_type_list or hasattr('__iter__', a_type_list)
         # Allow this class to also be used like a dead end
         if a_type_list and len(a_type_list) > 1:
-            self.chain = Converters.marshaller_for(list(a_type_list)[1:])
+            self._chain = Converters.marshaller_for(list(a_type_list)[1:])
 
     def marshal(self, content):
         """Does nothing"""
-        return content if not self.chain else self.chain.marshal(content)
+        return content if not self._chain else self.chain.marshal(content)
 
     def unmarshal(self, content):
         """Returns content without modification"""
-        return content if not self.chain else self.chain.marshal(content)
-
-            
-class PlainConverter(ConverterMixin):
-    """Dummy converter to plain text"""
-
-    types = ['text/plain']
-
-    def __init__(self):
-        ConverterMixin.__init__(self)
+        return content if not self._chain else self.chain.marshal(content)

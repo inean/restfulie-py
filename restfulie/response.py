@@ -16,7 +16,7 @@ __all__ = ['Response']
 
 # Project requirements
 from .converters import Converters
-from .links import HeaderLinks
+from .links import Link
 
 
 class Response(object):
@@ -47,16 +47,17 @@ class Response(object):
         """Unmarshalled object of the response body"""
         if not self._resource:
             content_type = self._response.headers.get_list('content-type')[0]
-            converter = Converters.marshaller_for(content_type)
+            converter = Converters.marshaller_for(content_type.split(';')[0])
             self._resource = converter.unmarshal(self._response.buffer)
         return self._resource
-
+    
     @property
     def links(self):
         """Returns the Links of the header"""
         if not self._links:
             self._links = self.resource.links()
-            self._links.update(HeaderLinks(self._response.headers))
+            values = self._response.headers.get_list('link')
+            self._links.update([Link.parse(link) for link in values])
         return self._links
 
     def link(self, rel):
