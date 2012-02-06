@@ -7,8 +7,9 @@ parser
 
 from __future__ import absolute_import
 
-__author__  = "Carlos Martin <cmartin@liberalia.net>"
-__license__ = "See LICENSE file for details"
+__autor__ = "caelum - http://caelum.com.br"
+__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 
