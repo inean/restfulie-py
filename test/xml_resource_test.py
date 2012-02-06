@@ -1,6 +1,6 @@
 from xml.etree import ElementTree
 
-from restfulie.converters import XmlConverter
+from restfulie.resources.xml import XmlConverter
 from restfulie.resources.xml import XMLResource
 
 def test_xml_parsing():

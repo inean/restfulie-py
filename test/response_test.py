@@ -1,11 +1,11 @@
 from restfulie.response import Response
-
+from tornado.httpclient import HTTPResponse
 
 class response_test:
     
     def trivial_test(self):
     
-        response = ({'status': 200}, 'Hello')
+        response = HTTPResponse(None, 'code'=200, body='Hello')
     
         r = Response(response)
         assert r.body == 'Hello'
@@ -14,7 +14,7 @@ class response_test:
     
     def resource_test(self):
     
-        response = ({'status': 200, 'content-type': \
+        response = ({'code': 200, 'content-type': \
                      'text/plain; charset=utf-8'}, 'Hello')
     
         r = Response(response)
@@ -23,7 +23,7 @@ class response_test:
     
     def link_test(self):
     
-        response = ({'status': 200, 'link': '</feed>; rel="alternate"'}, 'Hello')
+        response = ({'code': 200, 'link': '</feed>; rel="alternate"'}, 'Hello')
         r = Response(response)
         link = r.link('alternate')
         assert link.href == '/feed'

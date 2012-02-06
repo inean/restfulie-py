@@ -1,4 +1,4 @@
-from restfulie.dsl import Dsl
+from restfulie.configuration import Configuration
 from restfulie.request import Request
 from mockito import mock
 from threading import Semaphore
@@ -16,7 +16,7 @@ class callable_mock():
 class http_method_test:
 
     def setup(self):
-        self.dsl = mock(Dsl)
+        self.dsl = mock(Configuration)
         self.request = Request(self.dsl)
 
     def should_make_synchronous_invocations_with_simple_auth(self):
