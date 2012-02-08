@@ -24,11 +24,15 @@ class Request(object):
     def __init__(self, config):
         self._config = config
 
-    def __call__(self, callback=None, **payload):
+    def __call__(self, callback=None, params=None, **payload):
         """
         Perform the request.The optional payload argument is sent to
         the server
         """
-        env = {} if not payload else {'payload': kwargs}
+        env = {
+            'params'  : params,
+            'payload' : payload, 
+            }
+
         procs = list(self._config.processors)
         return Parser(procs).follow(callback, self._config, env)

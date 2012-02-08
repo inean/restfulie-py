@@ -23,7 +23,7 @@ class Parser(object):
     def __init__(self, processors):
         self._processors = processors
 
-    def follow(self, callback, request, env=None):
+    def follow(self, callback, request, env):
         """Follow chain"""
         processor = self._processors.pop(0)
-        return processor.execute(callback, self, request, env or {})
+        return processor.execute(callback, self, request, env)

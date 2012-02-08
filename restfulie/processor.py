@@ -12,12 +12,13 @@ __modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
+from copy import copy
+from base64 import encodestring
 
 __all__ = ['Configuration']
 
 # Project requirements
-from base64 import encodestring
-from copy import copy
+from tornado.httputil import url_concat
 from tornado.httpclient import HTTPClient, AsyncHTTPClient
 
 # local submodule requirements
@@ -76,11 +77,12 @@ class ExecuteRequestProcessor(RequestProcessor):
     Processor responsible for getting the body from environment and
     making a request with it.
     """
+
     @staticmethod
     def _sync(request, env):
         """Run blocked"""
         response = HTTPClient().fetch(
-            request.uri,
+            url_concat(request.uri, env["params"]),
             method=request.verb,
             body=env.get("body"), 
             headers=request.headers)
@@ -90,7 +92,7 @@ class ExecuteRequestProcessor(RequestProcessor):
     def _async(callback, request, env):
         """Run async"""
         AsyncHTTPClient().fetch(
-            request.uri,
+            url_concat(request.uri, env["params"]),
             lambda x: callback(Response(x)),
             method=request.verb,
             body=env.get("body"), 
@@ -107,7 +109,7 @@ class PayloadMarshallingProcessor(RequestProcessor):
     """Responsible for marshalling the payload in environment"""
 
     def execute(self, callback, chain, request, env):
-        if "payload" in env:
+        if env["payload"]:
             content_type = request.headers.get("content-type")
             marshaller   = Converters.marshaller_for(content_type)
             env["body"]  = marshaller.marshal(env["payload"])
