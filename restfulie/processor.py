@@ -13,9 +13,14 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 from copy import copy
-from base64 import encodestring
+from urlparse import urlparse
 
-__all__ = ['Configuration']
+__all__ = [
+    'AuthenticationProcessor',
+    'ExecuteRequestProcessor',
+    'PayloadMarshallingProcessor',
+    'RedirectProcessor',
+    ]
 
 # Project requirements
 from tornado.httputil import url_concat
@@ -26,12 +31,6 @@ from .converters import Converters
 from .response import Response
 from .request import Request
 
-__all__ = [
-    'AuthenticationProcessor',
-    'ExecuteRequestProcessor',
-    'PayloadMarshallingProcessor',
-    'RedirectProcessor',
-    ]
 
 #pylint: disable-msg=R0903
 class RequestProcessor(object):
@@ -46,30 +45,44 @@ class RequestProcessor(object):
 class AuthenticationProcessor(RequestProcessor):
     """Abstract class for authentication methods"""
 
-    USERNAME, PASSWORD, METHOD = xrange(0, 3)
-
-    implements = None
+    backends = {}
 
     def execute(self, callback, chain, request, env):
-        credentials = request.credentials
-        if credentials and credentials[self.METHOD] == self.implements:
-            request.headers['authorization'] = self._encode(request.credentials)
+        if len(request.credentials):
+            #pylint: disable-msg=E1101
+            path = urlparse(request.uri).path or "/"
+            for math, method, credentials in request.credentials:
+                if not math.match(path):
+                    continue
+                if method not in self.backends:
+                    error = "Unsupported auth mechanism '%s'" % method
+                    raise NotImplementedError(error)
+                # Call Auth mechanism
+                self.backends[method].authorize(credentials, request, env)
+                break
+        # follow not chain
         return chain.follow(callback, request, env)
 
-    def _encode(self, credentials):
-        """Return authentication header value"""
-        raise NotImplementedError
+
+class MetaAuth(type):
+    """Auth Metaclass"""
+
+    def __init__(mcs, name, bases, dct):
+        type.__init__(mcs, name, bases, dct)
+        if name.endswith("Auth"):
+            implements = mcs.implements
+            AuthenticationProcessor.backends[implements] = mcs()
 
 
-#pylint: disable-msg=R0903
-class AuthenticationSimpleProcessor(AuthenticationProcessor):
-    """Processor responsible for making HTTP simple auth"""
+#pylint: disable-msg=R0921
+class AuthMixin(object):
+    """Base class to derive authentication mechanisms"""
 
-    implements = "simple"
+    __metaclass__ = MetaAuth
 
-    def _encode(self, credentials):
-        username, password, _ = credentials
-        return "Basic %s" % encodestring("%s:%s" % (username, password))[:-1]
+    def authorize(self, credentials, request, env):
+        """Command called to be runned"""
+        raise NotImplementedError('Subclasses must implement this method')
 
 
 class ExecuteRequestProcessor(RequestProcessor):
@@ -140,7 +153,7 @@ class RedirectProcessor(RequestProcessor):
                 return callback(resource)
             # make a new request
             config = copy(request.config)
-            config.url = url
+            config.uri = url
             return Request(self)(callback)
         # chain
         return chain.follow(_on_resource, request, env)    \
@@ -152,8 +165,8 @@ class RedirectProcessor(RequestProcessor):
 
 #pylint:disable-msg=C0103
 tornado_chain = [
-    AuthenticationSimpleProcessor(),
-#    RedirectProcessor(),
     PayloadMarshallingProcessor(),
+    AuthenticationProcessor(),
+#    RedirectProcessor(),
     ExecuteRequestProcessor(),
     ]

@@ -12,6 +12,7 @@ __modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
+import re
 
 __all__ = ['Configuration']
 
@@ -58,7 +59,7 @@ class Configuration(object):
         self.headers     = HTTPHeaders()
         self.flavors     = flavors or ['json', 'xml']
         self.processors  = chain or tornado_chain
-        self.credentials = None
+        self.credentials = []
         self.verb        = None
 
     def __getattr__(self, value):
@@ -99,7 +100,18 @@ class Configuration(object):
             if 'accept' in self.headers else content_type
         return self
 
-    def auth(self, username, password, method='simple'):
+    def auth(self, credentials, path="*", method='plain'):
         """Authentication feature. It does simple HTTP auth"""
-        self.credentials = (username, password, method)
+
+        # process a regex valid for path
+        rmatch = re.compile("%s$" % path)  if not path.endswith('*') \
+            else re.compile("%s.*" % path.rsplit('*', 1)[0])
+
+        # credentials must be a callable, but allow to pass an object
+        # instance or something with attributes
+        if not callable(credentials):
+            credentials = lambda: credentials
+
+        # not store it
+        self.credentials.append((rmatch, method, credentials))
         return self
