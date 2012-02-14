@@ -2,7 +2,7 @@
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
-API
+BaseAPI
 """
 
 from __future__ import absolute_import
@@ -13,18 +13,18 @@ __license__ = "See LICENSE.restfulie for details"
 # Import here any required modules.
 from itertools import ifilter
 
-__all__ = ['API']
+__all__ = ['BaseAPI']
 
 # Project requirements
 from .restfulie import Restfulie
 
-class API(object):
+class BaseAPI(object):
     """
     Derive from here Custom API Implementations. All implementations
     MUST be stateless
     """
 
-    API_BASE = 'http://api.twitter.com/1/'
+    API_BASE = None
 
     #pylint: disable-msg=W0613
     @classmethod

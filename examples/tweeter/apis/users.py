@@ -10,9 +10,11 @@ from __future__ import absolute_import
 __author__   = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
+# Import required modules
+from restfulie.client import Extend, validate
+
 # local submodule requirements
 from ..api import API
-from ..client import Extend, validate
 
 
 class Client(object):
