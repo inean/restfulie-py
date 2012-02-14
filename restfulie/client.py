@@ -31,6 +31,11 @@ class Client(object):
         yield self._config
 
     @property
+    def credentials(self):
+        """Get credentials element"""
+        return self._config
+
+    @property
     def write_enabled(self):
         """Check if config has valid credentials. Return false
         otherwise"""

@@ -107,11 +107,6 @@ class Configuration(object):
         rmatch = re.compile("%s$" % path)  if not path.endswith('*') \
             else re.compile("%s.*" % path.rsplit('*', 1)[0])
 
-        # credentials must be a callable, but allow to pass an object
-        # instance or something with attributes
-        if not callable(credentials):
-            credentials = lambda: credentials
-
-        # not store it
+        # now store it
         self.credentials.append((rmatch, method, credentials))
         return self
