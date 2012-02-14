@@ -11,6 +11,7 @@ __author__   = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
+from itertools import ifilter
 
 __all__ = ['Credentials']
 
@@ -40,7 +41,7 @@ class Credentials(object):
     def  to_dict(self, *args):
         """Get a dict of properties collected from args"""
         dct = {}
-        for arg in ifilter(lambda x: hasattr(credentials, x), args):
+        for arg in ifilter(lambda x: hasattr(self, x), args):
             dct[arg] = getattr(self, arg)
         return dct
 
