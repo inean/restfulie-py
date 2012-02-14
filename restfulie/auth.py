@@ -14,11 +14,12 @@ __license__ = "See LICENSE.restfulie for details"
 # Import here any required modules.
 from base64 import b64encode
 from urllib import splittype, splithost
+from tornado.httpclient import AsyncHTTPClient, HTTPClient
 
 __all__ = []
 
 # Project requirements
-from oauth2 import Request, SignatureMethod_HMAC_SHA1
+from oauth2 import Request, Consumer, Token, SignatureMethod_HMAC_SHA1
 
 try:
     from urlparse import parse_qs
@@ -30,6 +31,8 @@ except ImportError:
 # local submodule requirements
 from .processor import AuthMixin
 
+class AuthError(Exception):
+    """Auth exception"""
 
 #pylint: disable-msg=R0903
 class BasicAuth(AuthMixin):
@@ -38,69 +41,263 @@ class BasicAuth(AuthMixin):
     implements = "plain"
 
     def authorize(self, credentials, request, env):
-        encode = b64encode("%s:%s" % credentials())
-        request.headers['authorization'] = 'Basic %s' %  encode
+        creden = credentials.to_list("consumer_key", "consumer_secret")
+        encode = b64encode("%s:%s" % creden)
+        request.headers['authorization'] = 'Basic %s' % encode
 
 
-class OAuth(AuthMixin):
+class OAuthMixin(AuthMixin):
     """ oauth method """
 
-    implements = "oauth"
+    @property
+    def request_url(self):
+        """Get request_token url according to OAuth 1.0 specs"""
+        raise NotImplementedError
 
-    DEFAULT_POST_CONTENT_TYPE = 'application/x-www-form-urlencoded'
+    @property
+    def access_url(self):
+        """Get access_token url according to OAuth 1.0 specs"""
+        raise NotImplementedError
 
+    @property
+    def authorize_url(self):
+        """Get authorize url according to OAuth 1.0 specs"""
+        raise NotImplementedError
+
+    @property
+    #pylint: disable-msg=W0201
+    def method(self):
+        """Get method used to sign oauth requests"""
+        if not hasattr(self, "_method"):
+            self._method = SignatureMethod_HMAC_SHA1()
+        return self._method
+
+    ##
+    # Fetch methods (HTTP/HTTPS)
+    #
+    def _fetch(self, consumer, token, params, uri, callback):
+        """Send request async"""
+        request = self._get_request(consumer, token, params, uri)
+        AsyncHTTPClient().fetch(uri,
+            callback=lambda x: callback(Token.from_string(x.buffer.read())),
+            method=self.method,
+            headers=request.to_header())
+
+    def _fetch_sync(self, consumer, token, params, uri):
+        """Send request sync"""
+        request = self._get_request(consumer, token, params, uri)
+        response = HTTPClient().fetch(uri,
+            method=request.method,
+            headers=request.to_header())
+        return Token.from_string(response.buffer.read())
+
+    ##
+    # OAuth related (sugar) protected methods
+    #
     @staticmethod
-    def validate_consumer(consumer):
-        """ validate a consumer agains oauth2.Consumer object """
-        if not hasattr(consumer, "key"):
-            raise ValueError("Invalid consumer.")
-        return consumer
+    def _get_realm(uri):
+        """ calculate realm """
+        schema, rest = splittype(uri)
+        hierpart = ''
+        if rest.startswith('//'):
+            hierpart = '//'
+        host, rest = splithost(rest)
+        return schema + ':' + hierpart + host
 
-    @staticmethod
-    def validate_token(token):
-        """ validate a token agains oauth2.Token object """
-        if token is not None and not hasattr(token, "key"):
-            raise ValueError("Invalid token.")
-        return token
+    def _get_request(self, consumer, token, params, uri):
+        """Prepare an oauth request based on arguments"""
+        request = Request.from_consumer_and_token(
+            consumer, token, parameters=params, http_url=uri)
+        request.sign_request(self.method, consumer, token)
+        return request
 
-    def authorize(self, credentials, request, env):
-        consumer, token, method = credentials()
+    def _get_consumer(self, credentials):
+        """Prepare and store consumer based on oauth arguments"""
+        if 'consumer' not in credentials.store(self.implements):
+            creds = credentials.to_list("consumer_key", "consumer_secret")
+            assert all(creds)
+            credentials.store(self.implements)['consumer'] = Consumer(*creds)
+        return credentials.store(self.implements)['consumer']
 
-        # validate params
-        consumer = self.validate_consumer(consumer)
-        token    = self.validate_token(token)
-        method   = method or SignatureMethod_HMAC_SHA1()
+    def _get_token(self, credentials):
+        """Prepare and store a token based on credentials"""
+        if 'token' not in credentials.store(self.implements):
+            creds = credentials.to_list("token_key", "token_secret")
+            if all(creds):
+                credentials.store(self.implements)['token'] = Token(*creds)
+        return credentials.store(self.implements).get('token', None)
+
+    ##
+    # OAuth Public token adquisition methods
+    #
+    def request_token(self, credentials, callback=None):
+        """Implements first stage on OAuth  dance async"""
+        self._fetch(                                     \
+            self._get_consumer(credentials),             \
+            None, credentials.to_dict("oauth_callback"), \
+            self.request_url, callback)
+
+    def request_token_sync(self, credentials):
+        """Implements first stage on OAuth dance sync"""
+        return self._fetch_sync(                         \
+            self._get_consumer(credentials),             \
+            None, credentials.to_dict("oauth_callback"), \
+                self.request_url)
+    ###
+    # OAuth authorization methods
+    #
+    def authorization_redirect(self, token):
+        """Get the authorization URL to redirect the user"""
+        request = Request.from_token_and_callback(       \
+            token=token, http_url=self.authorize_url)
+        return request.to_url()
+
+    def authorization_redirect_url(self, token, callback):
+        """Handle url redirection after user authenticates"""
+        raise NotImplementedError
+
+    def authorization_redirect_url_sync(self, token):
+        """
+        Handle url redirection after user authenticates syncronously
+        """
+        raise NotImplementedError
+
+    ##
+    # OAuth access methods
+    #
+    def access_token(self, credentials, token, verifier, callback):
+        """
+        After user has authorized the request token, get access token
+        with user supplied verifier
+        """
+        self._fetch(                                     \
+            self._get_consumer(credentials), token,      \
+            {'oauth_verifier' : verifier}, self.access_url, callback)
+
+    def access_token_sync(self, credentials, token, verifier):
+        """
+        After user has authorized the request token, get access token
+        with user supplied verifier
+        """
+        return self._fetch_sync(                         \
+            self._get_consumer(credentials), token,      \
+            {'oauth_verifier' : verifier}, self.access_url)
+
+    ###
+    # XAuth stuff (2LO)
+    #
+    def xauth_access_token(self, credentials, callback):
+        """
+        Get an access token from an username and password combination.
+        """
+        parameters = {
+            'x_auth_mode':     'client_auth',
+            'x_auth_username': credentials.username,
+            'x_auth_password': credentials.password,
+            }
+
+        self._fetch(                                    \
+            self._get_consumer(credentials), None,      \
+            parameters, self.access_url, callback)
+
+    def xauth_access_sync(self, credentials):
+        """
+        Get an access token from an username and password combination.
+        """
+        parameters = {
+            'x_auth_mode':     'client_auth',
+            'x_auth_username': credentials.username,
+            'x_auth_password': credentials.password,
+            }
+
+        self._fetch_sync(                              \
+            self._get_consumer(credentials), None,     \
+            parameters, self.access_url)
+
+    ###
+    # OAuth sign
+    # 
+    def sign(self, credentials, request, env):
+        """Sign request"""
+        
+        #pylint: disable-msg=C0103
+        POST_CONTENT_TYPE = 'application/x-www-form-urlencoded'
+
+        consumer = self._get_consumer(credentials)
+        token    = self._get_token(credentials)
+        
+        if not consumer or not token:
+            raise AuthError("Missing oauth tokens")
 
         # post ?
         headers  = request.headers
         if request.verb == "POST":
-            ctype = headers.get('content-type', self.DEFAULT_POST_CONTENT_TYPE)
-            headers['content-type'] = ctype
-        isform = headers.get('content-type') == self.DEFAULT_POST_CONTENT_TYPE
+            headers.setdefault('content-type', POST_CONTENT_TYPE)
+        isform = headers.get('content-type') == POST_CONTENT_TYPE
 
         # process post contents if required
         body, parameters = env.get('body', ''), None
         if isform and body:
             parameters = parse_qs(body)
 
-        # process token
-        req = Request.from_consumer_and_token(          \
-            consumer, token, request.verb, request.uri, \
+        oauth_request = Request.from_consumer_and_token(          \
+            consumer, token, request.verb, request.uri,           \
             parameters, body, isform)
-        req.sign_request(method, consumer, token)
-
-        # calculate realm
-        schema, rest = splittype(request.uri)
-        hierpart = ''
-        if rest.startswith('//'):
-            hierpart = '//'
-        host, rest = splithost(rest)
-        realm = schema + ':' + hierpart + host
+        oauth_request.sign_request(self.method, consumer, token)
 
         # process body if form or uri if a get/head
         if isform:
-            env['body'] = req.to_postdata()
+            env['body'] = oauth_request.to_postdata()
         elif request.verb in ('GET', 'HEAD',):
-            request.uri = req.to_url()
+            request.uri = oauth_request.to_url()
         else:
-            headers.update(req.to_header(realm=realm))
+            headers.update(oauth_request.to_header(               \
+                    realm=self._get_realm(request.uri)))
+
+    ##
+    # Auth Main method
+    # 
+    def authorize(self, credentials, request, env):
+        retries = 1
+        while(not (retries < 0)):
+            try:
+                retries = retries - 1 
+                self.sign(credentials, request, env)
+                break
+            except AuthError:
+                token = None
+                if credentials.callback:
+                    # Use PIN based OAuth
+                    token = self.request_token_sync(credentials)
+                    reurl = self.authorization_redirect(token)
+                    verfy = credentials.callback(reurl)
+                    token = self.access_token_sync(credentials, token, verfy)
+                else:
+                    # Use XAuth
+                    token = self.xauth_access_token_sync(credentials)
+                # store token
+                credentials.token_key = token.key
+                credentials.token_secret = token.secret
+                credentials.store(self.implements)['token']=token
+
+                      
+#pylint: disable-msg=W0223         
+class TwitterAuth(OAuthMixin):
+    """ oauth method """
+    
+    implements = "twitter"
+
+    @property
+    def request_url(self):
+        return "https://api.twitter.com/oauth/request_token"
+
+    @property
+    def authorize_url(self):
+        return "https://api.twitter.com/oauth/authorize"
+
+    @property
+    def access_url(self):
+        return "https://api.twitter.com/oauth/access_token"
+
+
+
