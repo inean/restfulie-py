@@ -59,7 +59,7 @@ class Configuration(object):
         self.headers     = HTTPHeaders()
         self.flavors     = flavors or ['json', 'xml']
         self.processors  = chain or tornado_chain
-        self.credentials = []
+        self.credentials = {}
         self.verb        = None
 
     def __getattr__(self, value):
@@ -102,11 +102,12 @@ class Configuration(object):
 
     def auth(self, credentials, path="*", method='plain'):
         """Authentication feature. It does simple HTTP auth"""
-
+        # already defined ?
+        if path in self.credentials or method is None:
+            return self
         # process a regex valid for path
-        rmatch = re.compile("%s$" % path)  if not path.endswith('*') \
-            else re.compile("%s.*" % path.rsplit('*', 1)[0])
-
+        expr = "%s.*" if path.endswith('*') else "%s$"
+        rmatch = re.compile(expr % path.rsplit('*', 1)[0])
         # now store it
-        self.credentials.append((rmatch, method, credentials))
+        self.credentials[path]=(rmatch, method, credentials,)
         return self

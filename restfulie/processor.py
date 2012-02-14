@@ -51,7 +51,7 @@ class AuthenticationProcessor(RequestProcessor):
         if len(request.credentials):
             #pylint: disable-msg=E1101
             path = urlparse(request.uri).path or "/"
-            for math, method, credentials in request.credentials:
+            for math, method, credentials in request.credentials.itervalues():
                 if not math.match(path):
                     continue
                 if method not in self.backends:

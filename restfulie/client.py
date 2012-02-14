@@ -65,10 +65,10 @@ def validate(table):
     """Check that required attributes are present on method invoke"""
     #pylint: disable-msg=C0111
     def wrap_f(func):
-        def new_func(instance, action, args):
+        def new_func(instance, action, args, callback=None):
             if action not in getattr(instance, table):
                 raise AttributeError("Missing action '%s'" % action)
-            return func(instance, action, args)
+            return func(instance, action, args, callback)
         return wraps(func)(new_func)
     return wrap_f
 

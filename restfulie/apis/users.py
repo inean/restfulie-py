@@ -24,11 +24,23 @@ class Client(object):
       "show" : {
         "endpoint" : 'users/show.json',
         "method"   : 'get',
-        "required" : ['username'],
+        "auth"     : "twitter",
+        "required" : ['screen_name'],
+        },
+
+      "timeline" : {
+        "endpoint" : 'statuses/home_timeline.json',
+        "method"   : 'get',
+        "auth"     : "twitter",
+        "required" : [],
         }
       }
     
     @validate('USERS_API')
-    def users(self, action, args):
-        return API.query(self, self.USERS_API[action], args)
+    def users(self, action, args, callback):
+        return API.query(self, self.USERS_API[action], args, callback)
+
+    @validate('USERS_API')
+    def timeline(self, action, args, callback):
+        return API.query(self, self.USERS_API[action], args, callback)
     
