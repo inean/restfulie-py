@@ -14,6 +14,7 @@ __license__ = "See LICENSE.restfulie for details"
 # Import here any required modules.
 from base64 import b64encode
 from urllib import splittype, splithost
+from tornado.httputil import url_concat
 from tornado.httpclient import AsyncHTTPClient, HTTPClient
 
 __all__ = []
@@ -240,9 +241,13 @@ class OAuthMixin(AuthMixin):
         if isform and body:
             parameters = parse_qs(body)
 
-        oauth_request = Request.from_consumer_and_token(          \
-            consumer, token, request.verb, request.uri,           \
+        # update request uri
+        oauth_request = Request.from_consumer_and_token(
+            consumer, token, request.verb,
+            url_concat(request.uri, env["params"]),
             parameters, body, isform)
+
+        # sign
         oauth_request.sign_request(self.method, consumer, token)
 
         # process body if form or uri if a get/head
@@ -261,7 +266,7 @@ class OAuthMixin(AuthMixin):
         retries = 1
         while(not (retries < 0)):
             try:
-                retries = retries - 1 
+                retries = retries - 1
                 self.sign(credentials, request, env)
                 break
             except AuthError:
@@ -281,23 +286,4 @@ class OAuthMixin(AuthMixin):
                 credentials.store(self.implements)['token']=token
 
                       
-#pylint: disable-msg=W0223         
-class TwitterAuth(OAuthMixin):
-    """ oauth method """
-    
-    implements = "twitter"
-
-    @property
-    def request_url(self):
-        return "https://api.twitter.com/oauth/request_token"
-
-    @property
-    def authorize_url(self):
-        return "https://api.twitter.com/oauth/authorize"
-
-    @property
-    def access_url(self):
-        return "https://api.twitter.com/oauth/access_token"
-
-
 
