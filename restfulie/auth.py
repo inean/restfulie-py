@@ -254,7 +254,9 @@ class OAuthMixin(AuthMixin):
         if isform:
             env['body'] = oauth_request.to_postdata()
         elif request.verb in ('GET', 'HEAD',):
-            request.uri = oauth_request.to_url()
+            # remove params and update uri store params
+            request.uri   = oauth_request.to_url()
+            env["params"] = None
         else:
             headers.update(oauth_request.to_header(               \
                     realm=self._get_realm(request.uri)))
