@@ -18,6 +18,7 @@ __all__ = ['BaseAPI']
 # Project requirements
 from .restfulie import Restfulie
 
+
 class BaseAPI(object):
     """
     Derive from here Custom API Implementations. All implementations
@@ -40,18 +41,38 @@ class BaseAPI(object):
         raise NotImplementedError
 
     @classmethod
-    def query(cls, client, call, args, callback=None):
-        """Implements RECOVER on a CRUD model"""
-        # validate info
-        for req in ifilter(lambda x: x not in args, call["required"]):
-            error = "Missing arg '%s' for '%s" % (req, call["endpoint"])
-            raise AttributeError(error)
-        # invoke
-        verb = getattr(cls, "_" + call["method"])
-        return verb(client, call.get("auth"), call["endpoint"], args, callback)
+    def _upload(cls, client, source, args, callback=None):
+        """Allow upload of files to server using POST verb"""
+        raise NotImplementedError
 
     @classmethod
-    def upload(cls, client, source, args, callback=None):
-        """Allow upload of files to server"""
-        raise NotImplementedError
+    def invoke(cls, client, call, args, callback=None):
+        """Invoke method"""
+
+        # check that requirements are passed
+        path = call["endpoint"]
+        requirements = call.get("required", ())
+        for req in ifilter(lambda arg: arg not in args, requirements):
+            err = "Missing arg '%s' for '%s'" % (req, path)
+            raise AttributeError(err)
+
+        # build endpoint
+        endpoint = path % args
+        auth     = call.get("auth")
+        verb     = getattr(cls, "_" + call["method"])
+
+        # remove used args
+        path = call["endpoint"]
+        func = lambda x: '%%(%s)' % x[0] not in path
+        args = dict(ifilter(func, args.iteritems()))
+                
+        # invoke
+        return verb(client, auth, endpoint, args, callback)
+
+    @classmethod
+    def query(cls, client, call, args, callback=None):
+        """Implements RECOVER on a CRUD model"""
+        return cls.invoke(client, call, args, callback)
+
+        
 
