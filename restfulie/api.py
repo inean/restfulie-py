@@ -36,9 +36,21 @@ class BaseAPI(object):
             .get(callback=callback, params=args)
 
     @classmethod
-    def _post(cls, client, endpoint, args, callback):
+    def _post(cls, client, auth, endpoint, args, callback):
         """Implementation of verb POST"""
-        raise NotImplementedError
+
+        #default to form-urlencode. If somthing that smells like a
+        #file (has read function) is pased in args, encode it as
+        #multipart form
+
+        encode_type = "form"
+        if any((hasattr(arg, "read") for arg in args.itervalues())):
+            encode_type = "multipart"
+            
+        return Restfulie.at(cls.API_BASE + endpoint) \
+            .as_(encode_type)                        \
+            .auth(client.credentials, method=auth)   \
+            .post(callback=callback, **args)
 
     @classmethod
     def _upload(cls, client, source, args, callback=None):

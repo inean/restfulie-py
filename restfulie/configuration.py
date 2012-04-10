@@ -41,17 +41,25 @@ class Configuration(object):
     FLAVORS = {
         'json': {
             'content-type': 'application/json',
-            'accept':       'application/json'
-            },
+            'accept':       'application/json',
+        },
         'xml': {
             'content-type': 'application/xml',
-            'accept':       'application/xml'
-            },
+            'accept':       'application/xml',
+        },
         'plain': {
             'content-type': 'text/plain',
             'accept':       'text/plain',
-            },
-        }
+        },
+
+        # POST only flavors
+        'form': {
+            'content-type': 'application/x-www-form-urlencoded',
+        },
+        'multipart': {
+            'content-type': 'multipart/form-data; boundary=AaB03x',
+        },
+    }
 
     def __init__(self, uri, flavors=None, chain=None):
         """Initialize the configuration for requests at the given URI"""
@@ -79,7 +87,8 @@ class Configuration(object):
         # set accept if it wasn't set previously
         if 'accept' not in self.headers:
             for flavor in self.flavors:
-                self.headers.add('accept', self.FLAVORS[flavor]['accept'])
+                if 'accept' in self.FLAVORS[flavor]:
+                    self.headers.add('accept', self.FLAVORS[flavor]['accept'])
         return Request(self)
 
     def use(self, feature):
@@ -87,17 +96,20 @@ class Configuration(object):
         self.processors.insert(0, feature)
         return self
 
-    def as_(self, content_type):
+    def as_(self, flavor):
         """Set up the Content-Type"""
-        assert content_type
-        self.headers["accept"] = content_type
-        self.headers["content-type"] = content_type
+        if flavor in self.FLAVORS:
+            self.headers.update(self.FLAVORS[flavor])
+        else:
+            self.headers["accept"] = flavor
+            self.headers["content-type"] = flavor
         return self
 
-    def accepts(self, content_type):
+    def accepts(self, flavor):
         """Configure the accepted response format"""
-        self.headers['accept'] = content_type + ', ' + self.headers['accept'] \
-            if 'accept' in self.headers else content_type
+        if flavor in self.FLAVORS:
+            flavor = self.FLAVORS[flavor]['accept']
+        self.headers.add('accept', content_type)
         return self
 
     def auth(self, credentials, path="*", method='plain'):
