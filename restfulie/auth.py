@@ -230,10 +230,13 @@ class OAuthMixin(AuthMixin):
         if not consumer or not token:
             raise AuthError("Missing oauth tokens")
 
-        # post ?
+        # POST
         headers  = request.headers
         if request.verb == "POST":
-            headers.setdefault('content-type', POST_CONTENT_TYPE)
+            assert 'content-type' in headers
+            
+        # Only hash body and generate oauth_hash for body if
+        # Content-Type != form-urlencoded
         isform = headers.get('content-type') == POST_CONTENT_TYPE
 
         # process post contents if required
