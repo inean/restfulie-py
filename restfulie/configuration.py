@@ -89,6 +89,11 @@ class Configuration(object):
             for flavor in self.flavors:
                 if 'accept' in self.FLAVORS[flavor]:
                     self.headers.add('accept', self.FLAVORS[flavor]['accept'])
+
+        # set form type and default if noone is present
+        if 'content-type' not in self.headers and self.verb in('POST', 'PUT'):
+            self.headers['content-type'] = self.FLAVORS['form']['content-type']
+            
         return Request(self)
 
     def use(self, feature):
