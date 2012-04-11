@@ -48,7 +48,7 @@ class FilePart(Part):
     def write(self, output, algorithm=None):
         # write header
         output.writelines(("--", self.boundary, self.EOL))
-        output.writelines(('Content-Disposition: form-data; name="files"; filename="', self.name, '"' ,self.EOL))
+        output.writelines(('Content-Disposition: form-data; name="', self.name, '"; filename="', self.name, '"' ,self.EOL))
         output.writelines(('Content-Type: application/octet-stream', self.EOL))
         output.writelines(('Content-Transfer-Encoding: binary', self.EOL))
         output.write(self.EOL)
