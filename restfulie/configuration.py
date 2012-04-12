@@ -114,7 +114,7 @@ class Configuration(object):
         """Configure the accepted response format"""
         if flavor in self.FLAVORS:
             flavor = self.FLAVORS[flavor]['accept']
-        self.headers.add('accept', content_type)
+        self.headers.add('accept', flavor)
         return self
 
     def auth(self, credentials, path="*", method='plain'):
