@@ -26,7 +26,6 @@ class Response(object):
     def __init__(self, response):
         self._response = response
         self._resource = None
-        self._links    = None
 
     @property
     def headers(self):
@@ -55,7 +54,7 @@ class Response(object):
     @property
     def links(self):
         """Returns the Links of the header"""
-        if not self._links:
+        if not hasattr(self, '_links'):
             self._links = self.resource.links()
             values = self._response.headers.get_list('link')
             self._links.update([Link.parse(link) for link in values])
@@ -65,3 +64,9 @@ class Response(object):
         """Get a link with 'rel' from header"""
         return self.links.get(rel)
 
+    @property
+    def error(self):
+        if not hasattr(self, '_error'):
+            self._error = self.resource.error()
+        return self._error
+        

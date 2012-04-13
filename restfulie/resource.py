@@ -36,4 +36,9 @@ class Resource(object):
         """Return a Link with rel."""
         raise NotImplementedError
 
-
+    def error(self):
+        """
+        Return error if any or None if no error is present or isn't
+        suported by format
+        """
+        return None

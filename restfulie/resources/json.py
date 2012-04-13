@@ -74,6 +74,11 @@ class JsonResource(Resource):
         if not self._links:
             self._links = Links(self._parse_links(self._dict))
         return self._links
+
+    def error(self):
+        if not self._error:
+            self._error = self._dict.get('_error')
+        return self._error
         
     @classmethod
     def parse(cls, value):
