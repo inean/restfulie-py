@@ -1,16 +1,29 @@
 #!/usr/bin/python
+#-*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
 
-setup(name='restfulie',
-      version='0.9.2',
-      description='Writing hypermedia aware resource based clients and servers',
-      author=' ',
-      author_email=' ',
-      url='http://restfulie.caelumobjects.com/',
-      long_description='CRUD through HTTP is a good step forward to using resources and becoming RESTful, another step further is to make use of hypermedia aware resources and Restfulie allows you to do it in Python.',
-      download_url='https://github.com/caelum/restfulie-py',
-      keywords='restfulie rest http hypermedia',
+setup(name="sleipnir-restfulie",
+      version="0.9.2",
+      description="Writing hypermedia aware resource based clients and servers",
+      author="Caelum Objects <http://restfulie.caelum.com.br/>, Carlos Martín",
+      author_email="inean.es@gmail.com",
+      url="http://restfulie.caelumobjects.com/",
+      download_url="https://github.com/inean/restfulie-py",
+      packages=find_packages(),      
+      license="Apache 2.0",
+      keywords="rest, async, tornado, http, hypermedia",
+      zip_safe=True,
+      install_requires= [
+          "tornado >= 2.1.1",
+          "hal-json >= 0.1"
+      ],
+      long_description="""
+      CRUD through HTTP is a good step forward to using resources
+      and becoming RESTful, another step further is to make use of
+      hypermedia aware resources and Restfulie allows you to do it in
+      Python.
+      """,
       classifiers=[
           "Development Status :: 4 - Beta",
           "Environment :: Web Environment",
@@ -21,11 +34,6 @@ setup(name='restfulie',
           "Operating System :: POSIX",
           "Programming Language :: Python",
       ],
-      test_suite = "nose.collector",
-      tests_require = ['mockito',],
-      install_requires= ['tornado >= 2.1.1'],
-      packages=find_packages(),
-      include_package_data=True,
-      )
+  )
 
 
