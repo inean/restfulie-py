@@ -17,7 +17,7 @@ __all__ = ['Response']
 
 # Project requirements
 from .converters import Converters
-from .links import Link
+from .links import Links
 
 
 class Response(object):
@@ -56,8 +56,8 @@ class Response(object):
         """Returns the Links of the header"""
         if not hasattr(self, '_links'):
             self._links = self.resource.links()
-            values = self._response.headers.get_list('link')
-            self._links.update([Link.parse(link) for link in values])
+            values = self._response.headers.get('link')
+            self._links.update([link for link in Links.parse(values)])
         return self._links
 
     def link(self, rel):

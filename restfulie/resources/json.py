@@ -58,14 +58,17 @@ class JsonResource(Resource):
 
     def _parse_links(self, data):
         """Find links on JSON dictionary"""
-        dct_filter = lambda x: 'link' in x
+        retval, dct_filter = [], lambda x: '_links' in x
         for dct in ifilter(dct_filter, self._find_dicts_in_dict(data)):
             #Set a json as the default content-type for this link if
             #no one has been set by the server
             #pylint:disable-msg=W0106
-            [link.setdefault('type', 'json') for link in dct['link']]
-            return [Link(link) for link in dct['link']]
-        return []
+            for key, link in dct['_links'].iteritems():
+                link = dict(link)
+                link.setdefault('rel', key)
+                link.setdefault('type', 'application/json')
+                retval.append(Link(**link))
+        return retval
 
     def link(self, rel):
         return self.links().get(rel)

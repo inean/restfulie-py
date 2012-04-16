@@ -52,7 +52,7 @@ class PlainResource(Resource):
 class PlainConverter(ConverterMixin):
     """Dummy converter to plain text"""
 
-    types = ['text/plain']
+    types = ['text/plain', 'text/html',]
 
     def __init__(self):
         ConverterMixin.__init__(self)
