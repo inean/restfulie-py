@@ -94,7 +94,8 @@ class ExecuteRequestProcessor(RequestProcessor):
     @staticmethod
     def _sync(request, env):
         """Run blocked"""
-        response = HTTPClient().fetch(
+        request  = HTTPClient()
+        response = request.fetch(
             url_concat(request.uri, env["params"]),
             method=request.verb,
             body=env.get("body"), 
@@ -104,13 +105,14 @@ class ExecuteRequestProcessor(RequestProcessor):
     @staticmethod
     def _async(callback, request, env):
         """Run async"""
-        AsyncHTTPClient().fetch(
+        request  = AsyncHTTPClient()
+        response = request.fetch(
             url_concat(request.uri, env["params"]),
             lambda x: callback(Response(x)),
             method=request.verb,
             body=env.get("body"), 
             headers=request.headers)
-        return None
+        return request
 
     def execute(self, callback, chain, request, env):
         return self._sync(request, env) \
@@ -170,3 +172,8 @@ tornado_chain = [
 #    RedirectProcessor(),
     ExecuteRequestProcessor(),
     ]
+
+auth_chain = [
+    PayloadMarshallingProcessor(),
+    AuthenticationProcessor(),
+]
