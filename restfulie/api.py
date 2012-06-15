@@ -26,13 +26,15 @@ class BaseAPI(object):
     """
 
     API_BASE = None
+    FLAVORS  = None
+    CHAIN    = None
 
     #pylint: disable-msg=W0613
     @classmethod
     def _get(cls, client, auth, endpoint, args, callback):
         """Implementation of verb GET"""
-        return Restfulie.at(cls.API_BASE + endpoint) \
-            .auth(client.credentials, method=auth)   \
+        return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
+            .auth(client.credentials, method=auth)                           \
             .get(callback=callback, params=args)
 
     @classmethod
@@ -47,15 +49,10 @@ class BaseAPI(object):
         if any((hasattr(arg, "read") for arg in args.itervalues())):
             encode_type = "multipart"
             
-        return Restfulie.at(cls.API_BASE + endpoint) \
-            .as_(encode_type)                        \
-            .auth(client.credentials, method=auth)   \
+        return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
+            .as_(encode_type)                                                \
+            .auth(client.credentials, method=auth)                           \
             .post(callback=callback, **args)
-
-    @classmethod
-    def _upload(cls, client, source, args, callback=None):
-        """Allow upload of files to server using POST verb"""
-        raise NotImplementedError
 
     @classmethod
     def invoke(cls, client, call, args, callback=None):

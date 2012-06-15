@@ -24,6 +24,6 @@ class Restfulie(object):
 
     # pylint: disable-msg=C0103
     @staticmethod
-    def at(uri):
+    def at(uri, flavors=None, chain=None):
         """Create a new entry point for executing requests"""
-        return Configuration(uri)
+        return Configuration(uri, flavors, chain)
