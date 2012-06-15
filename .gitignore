@@ -1,7 +1,7 @@
 *.pyc
+*.egg-info
 .project
 .pydevproject
 env/
-restfulie.egg-info/
 dist/
 Makefile

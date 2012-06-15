@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 setup(name="sleipnir-restfulie",
-      version="0.9.2",
+      version="0.10",
       description="Writing hypermedia aware resource based clients and servers",
       author="Caelum Objects <http://restfulie.caelum.com.br/>, Carlos Martín",
       author_email="inean.es@gmail.com",
@@ -15,8 +15,8 @@ setup(name="sleipnir-restfulie",
       keywords="rest, async, tornado, http, hypermedia",
       zip_safe=True,
       install_requires= [
-          "tornado >= 2.1.1",
-          "hal-json >= 0.1"
+          "tornado  >= 2.1.1",
+          "hal-json >= 0.1",
       ],
       long_description="""
       CRUD through HTTP is a good step forward to using resources
