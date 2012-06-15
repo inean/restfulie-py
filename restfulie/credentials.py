@@ -21,6 +21,7 @@ class Credentials(object):
     Base class to define required credentials to use a remote
     service
     """
+    _mechanisms = {}
 
     def __init__(self):
         self._api_key         = None
@@ -28,7 +29,6 @@ class Credentials(object):
         self._consumer_secret = None
         self._token_key       = None
         self._token_secret    = None
-        self._mechanisms      = {}
 
     def store(self, mechanism):
         """A store for auth mechanism data"""
@@ -38,7 +38,7 @@ class Credentials(object):
         """Get a list of properties collected in args"""
         return [getattr(self, arg) for arg in args]
 
-    def  to_dict(self, *args):
+    def to_dict(self, *args):
         """Get a dict of properties collected from args"""
         dct = {}
         for arg in ifilter(lambda x: hasattr(self, x), args):
