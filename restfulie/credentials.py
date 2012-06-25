@@ -29,6 +29,7 @@ class Credentials(object):
         self._consumer_secret = None
         self._token_key       = None
         self._token_secret    = None
+        self._callback        = None
 
     def store(self, mechanism):
         """A store for auth mechanism data"""
@@ -115,4 +116,16 @@ class Credentials(object):
         """Set password"""
         self._token_secret = value
 
+    @property
+    def callback(self):
+        """
+        Callback to be invoked when user interaction is needed on
+        handshake
+        """
+        return self._callback
+
+    @callback.setter
+    def callback(self, value):
+        """Set callback"""
+        self._callback = value
 
