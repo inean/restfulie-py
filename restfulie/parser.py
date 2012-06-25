@@ -23,6 +23,9 @@ class Parser(object):
     def __init__(self, processors):
         self._processors = processors
 
+    def __len__(self):
+        return len(self._processors)
+        
     def follow(self, callback, request, env):
         """Follow chain"""
         processor = self._processors.pop(0)
