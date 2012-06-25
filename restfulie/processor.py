@@ -23,8 +23,12 @@ __all__ = [
     ]
 
 # Project requirements
+from tornado.gen import engine, Task
 from tornado.httputil import url_concat
 from tornado.httpclient import HTTPClient, AsyncHTTPClient
+
+# set curl as default backend
+AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient")
 
 # local submodule requirements
 from .converters import Converters
@@ -57,13 +61,32 @@ class AuthenticationProcessor(RequestProcessor):
                 if method not in self.backends:
                     error = "Unsupported auth mechanism '%s'" % method
                     raise NotImplementedError(error)
-                # Call Auth mechanism
-                self.backends[method].authorize(credentials, request, env)
-                break
-        # follow not chain
+                return method, credentials
+
+
+#pylint: disable-msg=R0903, R0922
+class AuthenticationSyncProcessor(AuthenticationProcessor):
+    """Abstract class for authentication methods. Used to sign"""
+
+    def execute(self, callback, chain, request, env):
+        method = AuthenticationProcessor.execute
+        method, cred = method(self, callback, chain, request, env)
+        method and self.backends[method].authorize(cred, request, env)
+        # follow if no method used
         return chain.follow(callback, request, env)
 
 
+class AuthenticationAsyncProcessor(AuthenticationProcessor):
+    """Abstract class for authentication methods. Async"""
+
+    @engine
+    def execute(self, callback, chain, request, env):
+        assert not chain or len(chain) == 0
+        method = AuthenticationProcessor.execute
+        method, cred = method(self, callback, chain, request, env)
+        if method is not None:
+            yield Task(self.backends[method].authorize, cred, request, env)
+        
 class MetaAuth(type):
     """Auth Metaclass"""
 
@@ -168,12 +191,12 @@ class RedirectProcessor(RequestProcessor):
 #pylint:disable-msg=C0103
 tornado_chain = [
     PayloadMarshallingProcessor(),
-    AuthenticationProcessor(),
-#    RedirectProcessor(),
+    AuthenticationSyncProcessor(),
+#   RedirectProcessor(),
     ExecuteRequestProcessor(),
     ]
 
 auth_chain = [
     PayloadMarshallingProcessor(),
-    AuthenticationProcessor(),
+    AuthenticationAsyncProcessor(),
 ]

@@ -14,6 +14,8 @@ __license__ = "See LICENSE.restfulie for details"
 # Import here any required modules.
 from base64 import b64encode
 from urllib import splittype, splithost
+
+from tornado.gen import Task, engine
 from tornado.httputil import url_concat
 from tornado.httpclient import AsyncHTTPClient, HTTPClient
 
@@ -41,10 +43,11 @@ class BasicAuth(AuthMixin):
 
     implements = "plain"
 
-    def authorize(self, credentials, request, env):
+    def authorize(self, credentials, request, env, callback=None):
         creden = credentials.to_list("consumer_key", "consumer_secret")
         encode = b64encode("%s:%s" % creden)
         request.headers['authorization'] = 'Basic %s' % encode
+        callable(callback) and callback()
 
 
 class OAuthMixin(AuthMixin):
@@ -81,7 +84,7 @@ class OAuthMixin(AuthMixin):
         request = self._get_request(consumer, token, params, uri)
         AsyncHTTPClient().fetch(uri,
             callback=lambda x: callback(Token.from_string(x.buffer.read())),
-            method=self.method,
+            method=request.method,
             headers=request.to_header())
 
     def _fetch_sync(self, consumer, token, params, uri):
@@ -201,7 +204,7 @@ class OAuthMixin(AuthMixin):
             self._get_consumer(credentials), None,      \
             parameters, self.access_url, callback)
 
-    def xauth_access_sync(self, credentials):
+    def xauth_access_token_sync(self, credentials):
         """
         Get an access token from an username and password combination.
         """
@@ -264,10 +267,45 @@ class OAuthMixin(AuthMixin):
             headers.update(oauth_request.to_header(               \
                     realm=self._get_realm(request.uri)))
 
+    @engine
+    def _authenticate(self, credentials, callback):
+        token = None
+        if credentials.callback:
+            # Use PIN based OAuth
+            token = yield Task(self.request_token, credentials)
+            reurl = self.authorization_redirect(token)
+            verfy = credentials.callback(reurl)
+            token = yield Task(self.access_token, credentials, token, verfy)
+        else:
+            # Use XAuth
+            token = yield Task(self.xauth_access_token, credentials)
+        # retval
+        callback(token)
+
+    def _authenticate_sync(self, credentials):
+        token = None
+        if credentials.callback:
+            # Use PIN based OAuth
+            token = self.request_token_sync(credentials)
+            reurl = self.authorization_redirect(token)
+            verfy = credentials.callback(reurl)
+            token = self.access_token_sync(credentials, token, verfy)
+        else:
+            # Use XAuth
+            token = self.xauth_access_token_sync(credentials)
+        return token
+
+    def _update_credentials(self, credentials, token):
+        # store token
+        credentials.token_key = token.key
+        credentials.token_secret = token.secret
+        credentials.store(self.implements)['token']=token
+
+
     ##
-    # Auth Main method
-    # 
-    def authorize(self, credentials, request, env):
+    # Auth Main methods
+    @engine
+    def authorize(self, credentials, request, env, callback):
         retries = 1
         while(not (retries < 0)):
             try:
@@ -275,20 +313,18 @@ class OAuthMixin(AuthMixin):
                 self.sign(credentials, request, env)
                 break
             except AuthError:
-                token = None
-                if credentials.callback:
-                    # Use PIN based OAuth
-                    token = self.request_token_sync(credentials)
-                    reurl = self.authorization_redirect(token)
-                    verfy = credentials.callback(reurl)
-                    token = self.access_token_sync(credentials, token, verfy)
-                else:
-                    # Use XAuth
-                    token = self.xauth_access_token_sync(credentials)
-                # store token
-                credentials.token_key = token.key
-                credentials.token_secret = token.secret
-                credentials.store(self.implements)['token']=token
+                token = yield Task(self._authenticate, credentials)
+                self._update_credentials(token)
 
-                      
+    def authorize_sync(self, credentials, request, env):
+        retries = 1
+        while(not (retries < 0)):
+            try:
+                retries = retries - 1
+                self.sign(credentials, request, env)
+                break
+            except AuthError:
+                # fetch token
+                token = self._authenticate_sync(credentials)
+                self._update_credentials(token)
 
