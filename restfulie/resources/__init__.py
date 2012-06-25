@@ -35,7 +35,7 @@ def __find(path, expr="*.py*"):
         index = len(path)
         pattern = os.path.abspath(os.path.join(path, pattern))
 
-    func = lambda x: x.split('.')[0].replace(os.sep, '.')[index + 1:]
+    func = lambda x: x[:x.rfind('.')].replace(os.sep, '.')[index + 1:]
     modules = set(itertools.imap(func, glob.glob(pattern)))
     # remove '__init__' if present
     modules.remove("__init__")
