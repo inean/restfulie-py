@@ -71,9 +71,9 @@ class BaseAPI(object):
         verb     = getattr(cls, "_" + call["method"])
 
         # remove used args
-        path = call["endpoint"]
-        func = lambda x: '%%(%s)' % x[0] not in path
-        args = dict(ifilter(func, args.iteritems()))
+        if args:
+            func = lambda x: '%%(%s)' % x[0] not in path
+            args = dict(ifilter(func, args.iteritems()))
                 
         # invoke
         return verb(client, auth, endpoint, args, callback)
