@@ -17,7 +17,7 @@ from urllib import splittype, splithost
 
 from tornado.gen import Task, engine
 from tornado.httputil import url_concat
-from tornado.httpclient import AsyncHTTPClient, HTTPClient
+from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPError
 
 __all__ = []
 
@@ -299,7 +299,9 @@ class OAuthMixin(AuthMixin):
             callback(token)
         # A handshake error is also notified.
         except HandShakeError, err:
-            callback(err.response)
+            callback(err.response.error)
+        except HTTPError, err:
+            callback(err)
 
     def _authenticate_sync(self, credentials):
         token = None
