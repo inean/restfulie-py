@@ -37,17 +37,26 @@ from .processor import AuthMixin
 class AuthError(Exception):
     """Auth exception"""
 
+class HandShakeError(Exception):
+    """Error on auth process"""
+    def __init__(self, response):
+        Exception.__init__(self, response.error)
+        self.response = response
+    
 #pylint: disable-msg=R0903
 class BasicAuth(AuthMixin):
     """Processor responsible for making HTTP simple auth"""
 
     implements = "plain"
 
-    def authorize(self, credentials, request, env, callback=None):
+    def authorize(self, credentials, request, env, callback):
+        self.authorize_sync(credentials, request, env)
+        callable(callback) and callback()
+
+    def authorize_sync(self, credentials, request, env):
         creden = credentials.to_list("consumer_key", "consumer_secret")
         encode = b64encode("%s:%s" % creden)
         request.headers['authorization'] = 'Basic %s' % encode
-        callable(callback) and callback()
 
 
 class OAuthMixin(AuthMixin):
@@ -81,9 +90,15 @@ class OAuthMixin(AuthMixin):
     #
     def _fetch(self, consumer, token, params, uri, callback):
         """Send request async"""
+        def on_response(response):
+            if not response.error:
+                return callback(Token.from_string(response.buffer.read()))
+            raise HandShakeError(response)
+
+        # process
         request = self._get_request(consumer, token, params, uri)
         AsyncHTTPClient().fetch(uri,
-            callback=lambda x: callback(Token.from_string(x.buffer.read())),
+            callback=on_response,
             method=request.method,
             headers=request.to_header())
 
@@ -270,17 +285,21 @@ class OAuthMixin(AuthMixin):
     @engine
     def _authenticate(self, credentials, callback):
         token = None
-        if credentials.callback:
-            # Use PIN based OAuth
-            token = yield Task(self.request_token, credentials)
-            reurl = self.authorization_redirect(token)
-            verfy = credentials.callback(reurl)
-            token = yield Task(self.access_token, credentials, token, verfy)
-        else:
-            # Use XAuth
-            token = yield Task(self.xauth_access_token, credentials)
-        # retval
-        callback(token)
+        try:
+            if credentials.callback:
+                # Use PIN based OAuth
+                token = yield Task(self.request_token, credentials)
+                reurl = self.authorization_redirect(token)
+                verfy = credentials.callback(reurl)
+                token = yield Task(self.access_token, credentials, token, verfy)
+            else:
+                # Use XAuth
+                token = yield Task(self.xauth_access_token, credentials)
+            # retval
+            callback(token)
+        # A handshake error is also notified.
+        except HandShakeError, err:
+            callback(err.response)
 
     def _authenticate_sync(self, credentials):
         token = None
@@ -297,25 +316,29 @@ class OAuthMixin(AuthMixin):
 
     def _update_credentials(self, credentials, token):
         # store token
-        credentials.token_key = token.key
-        credentials.token_secret = token.secret
-        credentials.store(self.implements)['token']=token
+        credentials.store(self.implements)['token'] = None
+        if isinstance(token, Token):
+            credentials.store(self.implements)['token']=token
 
 
     ##
     # Auth Main methods
     @engine
     def authorize(self, credentials, request, env, callback):
-        retries = 1
+        retries  = 1
+        response = None
         while(not (retries < 0)):
             try:
                 retries = retries - 1
                 self.sign(credentials, request, env)
                 break
             except AuthError:
-                token = yield Task(self._authenticate, credentials)
-                self._update_credentials(token)
-
+                response = yield Task(self._authenticate, credentials)
+                self._update_credentials(credentials, response)
+        # fetch token or response from server
+        response = response or credentials.store(self.implements)['token']
+        callback(response)
+        
     def authorize_sync(self, credentials, request, env):
         retries = 1
         while(not (retries < 0)):
@@ -326,5 +349,5 @@ class OAuthMixin(AuthMixin):
             except AuthError:
                 # fetch token
                 token = self._authenticate_sync(credentials)
-                self._update_credentials(token)
+                self._update_credentials(credentials, token)
 

@@ -27,9 +27,6 @@ from tornado.gen import engine, Task
 from tornado.httputil import url_concat
 from tornado.httpclient import HTTPClient, AsyncHTTPClient
 
-# set curl as default backend
-AsyncHTTPClient.configure("tornado.curl_httpclient.CurlAsyncHTTPClient")
-
 # local submodule requirements
 from .converters import Converters
 from .response import Response
@@ -71,7 +68,7 @@ class AuthenticationSyncProcessor(AuthenticationProcessor):
     def execute(self, callback, chain, request, env):
         method = AuthenticationProcessor.execute
         method, cred = method(self, callback, chain, request, env)
-        method and self.backends[method].authorize(cred, request, env)
+        method and self.backends[method].authorize_sync(cred, request, env)
         # follow if no method used
         return chain.follow(callback, request, env)
 
@@ -84,8 +81,7 @@ class AuthenticationAsyncProcessor(AuthenticationProcessor):
         assert not chain or len(chain) == 0
         method = AuthenticationProcessor.execute
         method, cred = method(self, callback, chain, request, env)
-        if method is not None:
-            yield Task(self.backends[method].authorize, cred, request, env)
+        self.backends[method].authorize(cred, request, env, callback)
         
 class MetaAuth(type):
     """Auth Metaclass"""
@@ -139,7 +135,7 @@ class ExecuteRequestProcessor(RequestProcessor):
 
     def execute(self, callback, chain, request, env):
         return self._sync(request, env) \
-            if not callable(callback)          \
+            if not callable(callback)   \
             else self._async(callback, request, env)
 
 
