@@ -97,7 +97,7 @@ class OAuthMixin(AuthMixin):
 
         # process
         request = self._get_request(consumer, token, params, uri)
-        AsyncHTTPClient().fetch(uri,
+        AsyncHTTPClient().fetch(request.to_url(),
             callback=on_response,
             method=request.method,
             headers=request.to_header())
@@ -327,29 +327,21 @@ class OAuthMixin(AuthMixin):
     # Auth Main methods
     @engine
     def authorize(self, credentials, request, env, callback):
-        retries  = 1
         response = None
-        while(not (retries < 0)):
-            try:
-                retries = retries - 1
-                self.sign(credentials, request, env)
-                break
-            except AuthError:
-                response = yield Task(self._authenticate, credentials)
-                self._update_credentials(credentials, response)
+        try:
+            self.sign(credentials, request, env)
+        except AuthError:
+            response = yield Task(self._authenticate, credentials)
+            self._update_credentials(credentials, response)
         # fetch token or response from server
         response = response or credentials.store(self.implements)['token']
         callback(response)
         
     def authorize_sync(self, credentials, request, env):
-        retries = 1
-        while(not (retries < 0)):
-            try:
-                retries = retries - 1
-                self.sign(credentials, request, env)
-                break
-            except AuthError:
-                # fetch token
-                token = self._authenticate_sync(credentials)
-                self._update_credentials(credentials, token)
+        try:
+            self.sign(credentials, request, env)
+        except AuthError:
+            # fetch token
+            token = self._authenticate_sync(credentials)
+            self._update_credentials(credentials, token)
 
