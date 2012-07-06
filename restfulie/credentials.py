@@ -11,7 +11,7 @@ __author__   = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
-from itertools import ifilter
+from itertools import ifilter,  product
 
 __all__ = ['Credentials']
 
@@ -21,111 +21,74 @@ class Credentials(object):
     Base class to define required credentials to use a remote
     service
     """
-    _mechanisms = {}
 
+    DEFAULTS = {
+        "callback" :     None,
+        "token_key":     None,
+        "token_secret" : None,
+    }
+    
+    __slots__ = ("_mechanisms", "_properties", "_callbacks",)
+        
     def __init__(self):
-        self._api_key         = None
-        self._consumer_key    = None
-        self._consumer_secret = None
-        self._token_key       = None
-        self._token_secret    = None
-        self._callback        = None
+        self._callbacks  = {}
+        self._mechanisms = {}
 
-    def store(self, mechanism):
-        """A store for auth mechanism data"""
-        return self._mechanisms.setdefault(mechanism, {})
+        # Maintain this definition last one or we will break set/get
+        # logic
+        self._properties = {
+            "callback": None,
+        }
+
+    def __contains__(self, value):
+        return value in self._properties
+        
+    def __getattr__(self, name):
+        # Common case
+        if name not in self._properties:
+            # Check if a callback has been set to retrieve required data
+            # callback accepts requeested name and returns something
+            # acceptable to dict.update
+            if name in self._callbacks or None in self._callbacks:
+                callback = self._callbacks.get(name, self._callbacks[None])
+                self._properties.update(callback[name](name))
+                assert name in self._properties
+            else:
+                # Try to return a default
+                if name in self.DEFAULTS: return self.DEFAULTS[name]
+                # Error: Notify
+                raise AttributeError(name)
+        # return value
+        return self._properties[name]
+
+    def __setattr__(self, name, value):
+        if not hasattr(self, "_properties"):
+            return super(Credentials, self).__setattr__(name, value)
+        # default op
+        self._properties[name] = value
 
     def to_list(self, *args):
-        """Get a list of properties collected in args"""
+        """Get a list of properties already collected in args"""
         return [getattr(self, arg) for arg in args]
 
     def to_dict(self, *args):
         """Get a dict of properties collected from args"""
-        dct = {}
-        for arg in ifilter(lambda x: hasattr(self, x), args):
-            dct[arg] = getattr(self, arg)
+        dct = dict((k, d[k]) for k in args if k in self._properties)
+        # convert to list becouse we probably will change
+        # self._properties when iterate over loop
+        for key in list(ifilter(lambda x: x not in self._properties, args)):
+            # this should invoke callbacks if needed and update self._properties
+            dct[key] = getattr(self, key)
         return dct
 
-    @property
-    def api_key(self):
-        """Get API key required to use remote service"""
-        return self._api_key or ""
-
-    @api_key.setter
-    def api_key(self, value):
-        """Set API key requires to use remote service"""
-        self._api_key = value
-
-    @property
-    def username(self):
-        """Get username"""
-        return self._token_key
-
-    @username.setter
-    def username(self, value):
-        """set username"""
-        self._token_key = value
-
-    @property
-    def password(self):
-        """Get password"""
-        return self._token_secret
-
-    @password.setter
-    def password(self, value):
-        """Set password"""
-        self._token_secret = value
-
-    @property
-    def consumer_key(self):
-        """Get required key to authenticate (login)"""
-        return self._consumer_key or ""
-
-    @consumer_key.setter
-    def consumer_key(self, value):
-        """Set auth key"""
-        self._consumer_key = value
-
-    @property
-    def consumer_secret(self):
-        """Get password"""
-        return self._consumer_secret or ""
-
-    @consumer_secret.setter
-    def consumer_secret(self, value):
-        """Set password"""
-        self._consumer_secret = value
-
-    @property
-    def token_key(self):
-        """Get token on 2LO mechanisms"""
-        return self._token_key
-
-    @token_key.setter
-    def token_key(self, value):
-        """Set auth key"""
-        self._token_key = value
-
-    @property
-    def token_secret(self):
-        """Get tolen secret"""
-        return self._token_secret
-
-    @token_secret.setter
-    def token_secret(self, value):
-        """Set password"""
-        self._token_secret = value
-
-    @property
-    def callback(self):
+    def ask(self, values, callback):
         """
-        Callback to be invoked when user interaction is needed on
-        handshake
+        Call callback mehtod whes asked for any values. Values
+        could be a string or a collection of them
         """
-        return self._callback
+        values = (values) if isinstance(values, basestring) else values
+        self._callback.update(product(values, (callback,)))
 
-    @callback.setter
-    def callback(self, value):
-        """Set callback"""
-        self._callback = value
-
+    def store(self, mechanism):
+        """A store for auth mechanism data"""
+        return self._mechanisms.setdefault(mechanism, {})

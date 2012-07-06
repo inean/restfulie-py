@@ -1,7 +1,9 @@
+*~
 *.pyc
 *.egg-info
 .project
 .pydevproject
 env/
 dist/
+build/
 Makefile
