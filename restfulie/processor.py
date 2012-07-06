@@ -58,7 +58,9 @@ class AuthenticationProcessor(RequestProcessor):
                 if method not in self.backends:
                     error = "Unsupported auth mechanism '%s'" % method
                     raise NotImplementedError(error)
+                # Call Auth mechanism should be used
                 return method, credentials
+        return None, None
 
 
 #pylint: disable-msg=R0903, R0922
@@ -113,8 +115,7 @@ class ExecuteRequestProcessor(RequestProcessor):
     @staticmethod
     def _sync(request, env):
         """Run blocked"""
-        request  = HTTPClient()
-        response = request.fetch(
+        response = HTTPClient().fetch(
             url_concat(request.uri, env["params"]),
             method=request.verb,
             body=env.get("body"), 
@@ -124,14 +125,14 @@ class ExecuteRequestProcessor(RequestProcessor):
     @staticmethod
     def _async(callback, request, env):
         """Run async"""
-        request  = AsyncHTTPClient()
-        response = request.fetch(
+        resource = AsyncHTTPClient()
+        response = resource.fetch(
             url_concat(request.uri, env["params"]),
             lambda x: callback(Response(x)),
             method=request.verb,
             body=env.get("body"), 
             headers=request.headers)
-        return request
+        return resource
 
     def execute(self, callback, chain, request, env):
         return self._sync(request, env) \

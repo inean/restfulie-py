@@ -62,7 +62,7 @@ class Response(object):
 
     def link(self, rel):
         """Get a link with 'rel' from header"""
-        return self.links.get(rel)
+        return self.links.rel
 
     @property
     def error(self):
