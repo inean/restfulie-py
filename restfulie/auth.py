@@ -13,7 +13,7 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 from base64 import b64encode
-from urllib import splittype, splithost
+from urllib import splittype, splithost, urlencode
 
 from tornado.gen import Task, engine
 from tornado.httputil import url_concat
@@ -22,7 +22,7 @@ from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPError
 __all__ = []
 
 # Project requirements
-from oauth2 import Request, Consumer, Token, SignatureMethod_HMAC_SHA1
+from oauth2 import Request, Consumer, Token, SignatureMethod_HMAC_SHA1, HTTP_METHOD
 
 try:
     from urlparse import parse_qs
@@ -88,7 +88,7 @@ class OAuthMixin(AuthMixin):
     ##
     # Fetch methods (HTTP/HTTPS)
     #
-    def _fetch(self, consumer, token, params, uri, callback):
+    def _fetch(self, consumer, token, uri, callback, **kwargs):
         """Send request async"""
         def on_response(response):
             if not response.error:
@@ -96,17 +96,22 @@ class OAuthMixin(AuthMixin):
             raise HandShakeError(response)
 
         # process
-        request = self._get_request(consumer, token, params, uri)
-        AsyncHTTPClient().fetch(request.to_url(),
-            callback=on_response,
+        request = self._get_request(consumer, token, uri, **kwargs)
+        AsyncHTTPClient().fetch(
+            uri,
             method=request.method,
-            headers=request.to_header())
+            body=kwargs.get("body", ''),
+            headers=request.to_header(),
+            callback=on_response
+        )
 
-    def _fetch_sync(self, consumer, token, params, uri):
+    def _fetch_sync(self, consumer, token, uri, **kwargs):
         """Send request sync"""
-        request = self._get_request(consumer, token, params, uri)
-        response = HTTPClient().fetch(uri,
+        request  = self._get_request(consumer, token, uri, **kwargs)
+        response = HTTPClient().fetch(
+            uri,
             method=request.method,
+            body=kwargs.get("body", ''),
             headers=request.to_header())
         return Token.from_string(response.buffer.read())
 
@@ -123,10 +128,16 @@ class OAuthMixin(AuthMixin):
         host, rest = splithost(rest)
         return schema + ':' + hierpart + host
 
-    def _get_request(self, consumer, token, params, uri):
+    def _get_request(self, consumer, token, uri, **kwargs):
         """Prepare an oauth request based on arguments"""
         request = Request.from_consumer_and_token(
-            consumer, token, parameters=params, http_url=uri)
+            consumer, token, 
+            http_url=uri,
+            http_method=kwargs.get("method", HTTP_METHOD),
+            parameters=kwargs.get("params"),
+            body=kwargs.get("body", ''),
+            is_form_encoded = bool(kwargs.get("body", False)),
+        )
         request.sign_request(self.method, consumer, token)
         return request
 
@@ -149,19 +160,24 @@ class OAuthMixin(AuthMixin):
     ##
     # OAuth Public token adquisition methods
     #
-    def request_token(self, credentials, callback=None):
+    def request_token(self, credentials, callback, method="POST"):
         """Implements first stage on OAuth  dance async"""
-        self._fetch(                                     \
-            self._get_consumer(credentials),             \
-            None, credentials.to_dict("oauth_callback"), \
-            self.request_url, callback)
+        self._fetch(
+            self._get_consumer(credentials),
+            None, self.request_url, callback,
+            method=method,
+            params=credentials.to_dict("oauth_callback")
+        )
 
-    def request_token_sync(self, credentials):
+    def request_token_sync(self, credentials, method="POST"):
         """Implements first stage on OAuth dance sync"""
-        return self._fetch_sync(                         \
-            self._get_consumer(credentials),             \
-            None, credentials.to_dict("oauth_callback"), \
-                self.request_url)
+        return self._fetch_sync(
+            self._get_consumer(credentials),
+            None, self.request_url,
+            method=method,
+            params=credentials.to_dict("oauth_callback")
+        )
+        
     ###
     # OAuth authorization methods
     #
@@ -184,23 +200,29 @@ class OAuthMixin(AuthMixin):
     ##
     # OAuth access methods
     #
-    def access_token(self, credentials, token, verifier, callback):
+    def access_token(self, credentials, token, verifier, callback, method="POST"):
         """
         After user has authorized the request token, get access token
         with user supplied verifier
         """
-        self._fetch(                                     \
-            self._get_consumer(credentials), token,      \
-            {'oauth_verifier' : verifier}, self.access_url, callback)
+        self._fetch(
+            self._get_consumer(credentials),
+            token, self.access_url, callback,
+            method=method,
+            params={'oauth_verifier' : verifier},
+        )
 
-    def access_token_sync(self, credentials, token, verifier):
+    def access_token_sync(self, credentials, token, verifier, method="POST"):
         """
         After user has authorized the request token, get access token
         with user supplied verifier
         """
-        return self._fetch_sync(                         \
-            self._get_consumer(credentials), token,      \
-            {'oauth_verifier' : verifier}, self.access_url)
+        return self._fetch_sync(
+            self._get_consumer(credentials),
+            token, self.access_url,
+            method=method,
+            params={'oauth_verifier' : verifier}
+        )
 
     ###
     # XAuth stuff (2LO)
@@ -215,9 +237,13 @@ class OAuthMixin(AuthMixin):
             'x_auth_password': credentials.password,
             }
 
-        self._fetch(                                    \
-            self._get_consumer(credentials), None,      \
-            parameters, self.access_url, callback)
+        self._fetch(
+            self._get_consumer(credentials),
+            None, self.access_url, callback,
+            method="POST",
+            params=parameters,
+            body=urlencode(parameters, True).replace('+', '%20')
+        )
 
     def xauth_access_token_sync(self, credentials):
         """
@@ -229,9 +255,13 @@ class OAuthMixin(AuthMixin):
             'x_auth_password': credentials.password,
             }
 
-        self._fetch_sync(                              \
-            self._get_consumer(credentials), None,     \
-            parameters, self.access_url)
+        return self._fetch_sync(
+            self._get_consumer(credentials),
+            None, self.access_url,
+            method="POST",
+            params=parameters,
+            body=urllib.urlencode(parameters, True).replace('+', '%20')
+        )
 
     ###
     # OAuth sign
@@ -286,11 +316,11 @@ class OAuthMixin(AuthMixin):
     def _authenticate(self, credentials, callback):
         token = None
         try:
-            if credentials.callback:
+            if credentials.oauth_callback_handler:
                 # Use PIN based OAuth
                 token = yield Task(self.request_token, credentials)
                 reurl = self.authorization_redirect(token)
-                verfy = credentials.callback(reurl)
+                verfy = credentials.oauth_callback_handler(reurl)
                 token = yield Task(self.access_token, credentials, token, verfy)
             else:
                 # Use XAuth
@@ -305,11 +335,11 @@ class OAuthMixin(AuthMixin):
 
     def _authenticate_sync(self, credentials):
         token = None
-        if credentials.callback:
+        if credentials.oauth_callback_handler:
             # Use PIN based OAuth
             token = self.request_token_sync(credentials)
             reurl = self.authorization_redirect(token)
-            verfy = credentials.callback(reurl)
+            verfy = credentials.oauth_callback_handler(reurl)
             token = self.access_token_sync(credentials, token, verfy)
         else:
             # Use XAuth
