@@ -23,9 +23,12 @@ class Credentials(object):
     """
 
     DEFAULTS = {
-        "callback" :     None,
-        "token_key":     None,
-        "token_secret" : None,
+        "oauth_callback"         : None,
+        "oauth_callback_handler" : None,
+        "consumer_key"           : None,
+        "consumer_token"         : None,
+        "token_key"              : None,
+        "token_secret"           : None,
     }
     
     __slots__ = ("_mechanisms", "_properties", "_callbacks",)
@@ -36,9 +39,7 @@ class Credentials(object):
 
         # Maintain this definition last one or we will break set/get
         # logic
-        self._properties = {
-            "callback": None,
-        }
+        self._properties = {}
 
     def __contains__(self, value):
         return value in self._properties
@@ -73,7 +74,7 @@ class Credentials(object):
 
     def to_dict(self, *args):
         """Get a dict of properties collected from args"""
-        dct = dict((k, d[k]) for k in args if k in self._properties)
+        dct = dict((k, self._properties[k]) for k in args if k in self._properties)
         # convert to list becouse we probably will change
         # self._properties when iterate over loop
         for key in list(ifilter(lambda x: x not in self._properties, args)):
