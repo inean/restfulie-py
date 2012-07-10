@@ -93,3 +93,11 @@ class Credentials(object):
     def store(self, mechanism):
         """A store for auth mechanism data"""
         return self._mechanisms.setdefault(mechanism, {})
+
+    def clean(self, exclude=None):
+        """Clean stores. Excludes may be a list of valid keys. In that
+        keys, dose keys arent cleaned
+        """
+        props = self._properties
+        [props.pop(k) for k in props.iterkeys() if k not in exclude] \
+            if exclude else props.clear()
