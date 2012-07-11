@@ -27,6 +27,9 @@ class Credentials(object):
         "oauth_callback_handler" : None,
         "consumer_key"           : None,
         "consumer_token"         : None,
+    }
+
+    SECRETS = {
         "token_key"              : None,
         "token_secret"           : None,
     }
@@ -41,6 +44,9 @@ class Credentials(object):
         # logic
         self._properties = {}
 
+    def __iter__(self):
+        return self._properties.iterkeys()
+        
     def __contains__(self, value):
         return value in self._properties
         
@@ -51,22 +57,27 @@ class Credentials(object):
             # callback accepts requeested name and returns something
             # acceptable to dict.update
             if name in self._callbacks or None in self._callbacks:
-                callback = self._callbacks.get(name, self._callbacks[None])
-                self._properties.update(callback[name](name))
+                callback = self._callbacks.get(name) or self._callbacks[None]
+                self._properties.update(callback(name))
                 assert name in self._properties
             else:
                 # Try to return a default
-                if name in self.DEFAULTS: return self.DEFAULTS[name]
+                if name in self.DEFAULTS:
+                    return self.DEFAULTS[name]
+                if name in self.SECRETS:
+                    return self.SECRETS[name]
                 # Error: Notify
                 raise AttributeError(name)
         # return value
         return self._properties[name]
 
     def __setattr__(self, name, value):
-        if not hasattr(self, "_properties"):
-            return super(Credentials, self).__setattr__(name, value)
-        # default op
-        self._properties[name] = value
+        if not name.startswith("_"):
+            self._properties[name] = value
+        else:
+            # default op
+            object.__setattr__(self, name, value)
+
 
     def to_list(self, *args):
         """Get a list of properties already collected in args"""
@@ -82,13 +93,13 @@ class Credentials(object):
             dct[key] = getattr(self, key)
         return dct
 
-    def ask(self, values, callback):
+    def ask_to(self, callback, values):
         """
         Call callback mehtod whes asked for any values. Values
         could be a string or a collection of them
         """
         values = (values) if isinstance(values, basestring) else values
-        self._callback.update(product(values, (callback,)))
+        self._callbacks.update(product(values, (callback,)))
 
     def store(self, mechanism):
         """A store for auth mechanism data"""
@@ -99,5 +110,5 @@ class Credentials(object):
         keys, dose keys arent cleaned
         """
         props = self._properties
-        [props.pop(k) for k in props.iterkeys() if k not in exclude] \
+        [props.pop(k) for k in tuple(props.iterkeys()) if k not in exclude] \
             if exclude else props.clear()
