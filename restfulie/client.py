@@ -22,8 +22,8 @@ from .credentials import Credentials
 class Client(object):
     """Base class to implement a remote API"""
 
-    def __init__(self):
-        self._config = Credentials()
+    def __init__(self, credentials=None):
+        self._config = credentials or Credentials()
 
     @contextmanager
     def configure(self):
