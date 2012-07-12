@@ -15,7 +15,11 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 from itertools import ifilter
-import simplejson as json
+try:
+    import json
+except ImportError:
+    # python 2.5
+    import simplejson as json
 
 __all__ = []
 
