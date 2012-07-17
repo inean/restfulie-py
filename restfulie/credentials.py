@@ -58,7 +58,7 @@ class Credentials(object):
             # acceptable to dict.update
             if name in self._callbacks or None in self._callbacks:
                 callback = self._callbacks.get(name) or self._callbacks[None]
-                self._properties.update(callback(name))
+                callback(self._properties, name)
                 assert name in self._properties
             else:
                 # Try to return a default
