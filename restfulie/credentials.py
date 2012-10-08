@@ -26,7 +26,7 @@ class Credentials(object):
         "oauth_callback"         : None,
         "oauth_callback_handler" : None,
         "consumer_key"           : None,
-        "consumer_token"         : None,
+        "consumer_secret"        : None,
     }
 
     SECRETS = {
