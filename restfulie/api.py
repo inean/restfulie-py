@@ -29,12 +29,18 @@ class BaseAPI(object):
     FLAVORS  = None
     CHAIN    = None
 
+    # Timeouts
+    CONNECT_TIMEOUT = None
+    REQUEST_TIMEOUT = None
+    
+    
     #pylint: disable-msg=W0613
     @classmethod
     def _get(cls, client, auth, endpoint, args, callback):
         """Implementation of verb GET"""
         return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
             .auth(client.credentials, method=auth)                           \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)                 \
             .get(callback=callback, params=args)
 
     @classmethod
@@ -52,6 +58,7 @@ class BaseAPI(object):
         return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
             .as_(encode_type)                                                \
             .auth(client.credentials, method=auth)                           \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)                 \
             .post(callback=callback, **args)
 
     @classmethod

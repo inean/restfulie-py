@@ -61,15 +61,20 @@ class Configuration(object):
         },
     }
 
+    # Default tornado timeout
+    TIMEOUT = 20
+    
     def __init__(self, uri, flavors=None, chain=None):
         """Initialize the configuration for requests at the given URI"""
-        self.uri         = uri
-        self.headers     = HTTPHeaders()
-        self.flavors     = flavors or ['json', 'xml']
-        self.processors  = chain or tornado_chain
-        self.credentials = {}
-        self.verb        = None
-
+        self.uri             = uri
+        self.headers         = HTTPHeaders()
+        self.flavors         = flavors or ['json', 'xml']
+        self.processors      = chain or tornado_chain
+        self.credentials     = {}
+        self.verb            = None
+        self.request_timeout = self.TIMEOUT
+        self.connect_timeout = self.TIMEOUT
+        
     def __getattr__(self, value):
         """
         Perform an HTTP request. This method supports calls to the following
@@ -99,6 +104,12 @@ class Configuration(object):
     def use(self, feature):
         """Register a feature (processor) at this configuration"""
         self.processors.insert(0, feature)
+        return self
+
+    def until(self, request_timeout=None, connect_timeout=None):
+        """Set current timeout in seconds for every call"""
+        self.connect_timeout = connect_timeout or self.connect_timeout
+        self.request_timeout = request_timeout or self.request_timeout
         return self
 
     def as_(self, flavor):

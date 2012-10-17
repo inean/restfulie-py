@@ -119,7 +119,9 @@ class ExecuteRequestProcessor(RequestProcessor):
             url_concat(request.uri, env["params"]),
             method=request.verb,
             body=env.get("body"), 
-            headers=request.headers)
+            headers=request.headers,
+            connect_timeout = request.connect_timeout,
+            request_timeout = request.request_timeout)
         return Response(response)
 
     @staticmethod
@@ -130,8 +132,10 @@ class ExecuteRequestProcessor(RequestProcessor):
             url_concat(request.uri, env["params"]),
             lambda x: callback(Response(x)),
             method=request.verb,
-            body=env.get("body"), 
-            headers=request.headers)
+            body=env.get("body"),
+            headers=request.headers,
+            connect_timeout = request.connect_timeout,
+            request_timeout = request.request_timeout)
         return resource
 
     def execute(self, callback, chain, request, env):
