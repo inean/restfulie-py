@@ -27,6 +27,12 @@ class Response(object):
         self._response = response
         self._resource = None
 
+    def __getattr__(self, key):
+        return self.resource[key]
+
+    def __contains__(self, key):
+        return key in self.resource
+        
     @property
     def headers(self):
         """Returns HTTP headers"""
