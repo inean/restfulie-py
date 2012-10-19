@@ -29,6 +29,11 @@ class Request(object):
         Perform the request.The optional payload argument is sent to
         the server
         """
+        #Add tuple support
+        if None in payload and len(payload) == 1:
+            payload = payload[None]
+            assert isinstance(payload, (tuple, list,))
+            
         env = {
             'params'  : params,
             'payload' : payload, 
