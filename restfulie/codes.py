@@ -80,6 +80,7 @@ NETWORK_AUTHENTICATION_REQUIRED = 511
 CONNECTION_CLOSED = 599
 
 # Mapping status codes to official W3C names
+#pylint:disable-msg=C0103
 responses = {
     100: 'Continue',
     101: 'Switching Protocols',
@@ -132,3 +133,17 @@ responses = {
     511: 'Network Authentication Required',
     599: 'Connection closed',
 }
+
+#pylint:disable-msg=C0103, C0111, C0321
+def is2XX(code): return code >= 200 and code <= 299
+def is3XX(code): return code >= 300 and code <= 399
+def is4XX(code): return code >= 400 and code <= 499
+def is5XX(code): return code >= 500 and code <= 599
+
+#Aliases
+is_successful   = is2XX
+is_redirection  = is3XX
+is_client_error = is4XX
+is_server_error = is5XX
+
+def is_error(code): return is4XX(code) or is5XX(code)
