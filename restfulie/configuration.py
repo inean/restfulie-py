@@ -52,7 +52,7 @@ class Configuration(object):
             'accept':       'text/plain',
         },
 
-        # POST only flavors
+        # POST and PUT only flavors
         'form': {
             'content-type': 'application/x-www-form-urlencoded',
         },
@@ -114,18 +114,21 @@ class Configuration(object):
 
     def as_(self, flavor):
         """Set up the Content-Type"""
-        if flavor in self.FLAVORS:
-            self.headers.update(self.FLAVORS[flavor])
-        else:
-            self.headers["accept"] = flavor
-            self.headers["content-type"] = flavor
+        if flavor is not None:
+            # Just use default flavors in case we pass a None param
+            if flavor in self.FLAVORS:
+                self.headers.update(self.FLAVORS[flavor])
+            else:
+                self.headers["accept"] = flavor
+                self.headers["content-type"] = flavor
         return self
 
     def accepts(self, flavor):
         """Configure the accepted response format"""
-        if flavor in self.FLAVORS:
-            flavor = self.FLAVORS[flavor]['accept']
-        self.headers.add('accept', flavor)
+        if flavor is not None:
+            if flavor in self.FLAVORS:
+                flavor = self.FLAVORS[flavor]['accept']
+            self.headers.add('accept', flavor)
         return self
 
     def auth(self, credentials, path="*", method='plain'):
