@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 setup(name="sleipnir-restfulie",
-      version="0.16pre0",
+      version="0.16pre1",
       description="Writing hypermedia aware resource based clients and servers",
       author="Caelum Objects <http://restfulie.caelum.com.br/>, Carlos Martín",
       author_email="inean.es@gmail.com",
