@@ -144,6 +144,6 @@ class JsonConverter(ConverterMixin):
     #pylint: disable-msg=R0201
     def unmarshal(self, json_content):
         """Produces an object for a given JSON content"""
-        return JsonResource(json.loads(json_content.read()))
+        return JsonResource(json.load(json_content))
 
 
