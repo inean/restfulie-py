@@ -72,6 +72,9 @@ class Configuration(object):
         self.processors      = chain or tornado_chain
         self.credentials     = {}
         self.verb            = None
+
+        # Request extra arguments
+        self.use_gzip        = False
         self.request_timeout = self.TIMEOUT
         self.connect_timeout = self.TIMEOUT
         
@@ -106,6 +109,11 @@ class Configuration(object):
         self.processors.insert(0, feature)
         return self
 
+    def compress(self):
+        """Notify server that we will be zipping request"""
+        self.use_gzip = True
+        return self
+        
     def until(self, request_timeout=None, connect_timeout=None):
         """Set current timeout in seconds for every call"""
         self.connect_timeout = connect_timeout or self.connect_timeout

@@ -118,8 +118,9 @@ class ExecuteRequestProcessor(RequestProcessor):
         response = HTTPClient().fetch(
             url_concat(request.uri, env["params"]),
             method=request.verb,
-            body=env.get("body"), 
             headers=request.headers,
+            body=env.get("body"),
+            use_gzip = request.use_gzip,
             connect_timeout = request.connect_timeout,
             request_timeout = request.request_timeout)
         return Response(response)
@@ -132,8 +133,9 @@ class ExecuteRequestProcessor(RequestProcessor):
             url_concat(request.uri, env["params"]),
             lambda x: callback(Response(x)),
             method=request.verb,
-            body=env.get("body"),
             headers=request.headers,
+            body=env.get("body"),
+            use_gzip = request.use_gzip,
             connect_timeout = request.connect_timeout,
             request_timeout = request.request_timeout)
         return resource
