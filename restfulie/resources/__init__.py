@@ -38,7 +38,7 @@ def __find(path, expr="*.py*"):
     func = lambda x: x[:x.rfind('.')].replace(os.sep, '.')[index + 1:]
     modules = set(itertools.imap(func, glob.glob(pattern)))
     # remove '__init__' if present
-    modules.remove("__init__")
+    "__init__" in modules and modules.remove("__init__")
     return modules
 
 #pylint: disable-msg=W0141
