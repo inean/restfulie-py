@@ -14,7 +14,7 @@ __modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
-from itertools import ifilter
+import logging
 try:
     import json
 except ImportError:
@@ -34,63 +34,96 @@ from ..converters import ConverterMixin
 class JsonResource(Resource):
     """This resource is returned when a JSON is unmarshalled"""
 
+    class JsonData(dict):
+        """Simple Dic that allow access to keys as attributes"""
+        def __getattr__(self, key):
+            return self[key]
+            
     def __init__(self, data):
         """JsonResource attributes can be accessed with 'dot'"""
         super(JsonResource, self).__init__()
+        
+        # We don't spect a tuple from remote, becouse som
+        # vulnerabilities with JSON and javascript. Otherwise, is
+        # legal to produce json tuple and send to server, (for
+        # PATCH). See
+        # http://haacked.com/archive/2008/11/20/
+        # anatomy-of-a-subtle-json-vulnerability.aspx
         assert isinstance(data, dict)
-        for key, value in ifilter(lambda x: x[0] != 'link', data.iteritems()):
-            if isinstance(value, (list, tuple,)):
-                setattr(self, key, [self.parse(element) for element in value])
-            else:
-                setattr(self, key, self.parse(value))
 
-        # store dict
-        self._dict  = data
-        self._links = None
+        # Init parameters to safe defaults
+        self._error  = None
+        self._links  = Links([])
+        self._data   = self.JsonData()
 
+        # Parse data
+        self._parse_data(self._data, data)
+        
     def __len__(self):
-        return len(self._dict)
+        return len(self._data)
 
-    def _find_dicts_in_dict(self, data):
-        """Get all dictionaries on a structure and returns a list of it"""
-        dicts = []
-        if isinstance(data, dict):
-            dicts.append(data)
-            for value in data.itervalues():
-                dicts.extend(self._find_dicts_in_dict(value))
-        return dicts
+    def __iter__(self):
+        return self._data.iteritems()
 
+    def __getattr__(self, key):
+        if not key.startswith("_"):
+            return getattr(self._data, key)
+        raise AttributeError(key)
+        
+    def _parse_data(self, root, data):
+        """
+        Process data dictionary and store it on root. Root should
+        be a dict like instance
+        """
+        for key, value in data.iteritems():
+            # process data
+            if isinstance(value, dict):
+                root[key] = self._parse_data(self.JsonData(), value)
+            # process collections
+            elif isinstance(value, (list, tuple,)):
+                root[key] = [
+                    self._parse_data(self.JsonData(), val)
+                    for val in value
+                ]
+            # process links
+            elif key == "_links":
+                self._parse_links(data)
+            # store error, only one is allowed
+            elif key == "_error":
+                assert self._error is None
+                self._error = self._error or value
+            # Just ignore protected args"
+            elif key.startswith("_"):
+                logging.warning("Ignoring " + key)
+            # last resource: Store key - value pair
+            else:
+                root[key] = value
+            return root
+
+    #pylint: disable-msg=W0142
     def _parse_links(self, data):
-        """Find links on JSON dictionary"""
-        retval, dct_filter = [], lambda x: '_links' in x
-        for dct in ifilter(dct_filter, self._find_dicts_in_dict(data)):
-            #Set a json as the default content-type for this link if
-            #no one has been set by the server
-            #pylint:disable-msg=W0106
-            for key, link in dct['_links'].iteritems():
-                link = dict(link)
-                link.setdefault('rel', key)
-                link.setdefault('type', 'application/json')
-                retval.append(Link(**link))
-        return retval
+        """Find links on dictionary"""
+        retval = []
+        #Set a json as the default content-type for this link if
+        #no one has been set by the server
+        #pylint:disable-msg=W0106
+        for key, link in data['_links'].iteritems():
+            link = dict(link)
+            link.setdefault('rel', key)
+            link.setdefault('type', 'application/json')
+            retval.append(Link(**link))
+        # update links
+        self._links.update(retval)
 
-    def link(self, rel):
-        return self.links().get(rel)
+    def link(self, rel, default=None):
+        return self.links().rel(rel, default)
 
     def links(self):
-        if not self._links:
-            self._links = Links(self._parse_links(self._dict))
         return self._links
 
     def error(self):
-        if not self._error:
-            self._error = self._dict.get('_error')
         return self._error
         
-    @classmethod
-    def parse(cls, value):
-        """Pyhtonize a Json value"""
-        return cls(value) if isinstance(value, dict) else value
 
 class JsonConverter(ConverterMixin):
     """Converts objects from and to JSON"""
