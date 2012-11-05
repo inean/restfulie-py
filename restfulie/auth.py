@@ -260,7 +260,7 @@ class OAuthMixin(AuthMixin):
             None, self.access_url,
             method="POST",
             params=parameters,
-            body=urllib.urlencode(parameters, True).replace('+', '%20')
+            body=urlencode(parameters, True).replace('+', '%20')
         )
 
     ###
