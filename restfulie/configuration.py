@@ -14,6 +14,9 @@ __license__ = "See LICENSE.restfulie for details"
 # Import here any required modules.
 import re
 
+_SCHEME_RE = re.compile(r'(http.?://)?(?P<url>/.*)')
+_PORT_RE   = re.compile(r'(?P<host>[^:/ ]+)(:[0-9]*)?(?P<url>/.*)')
+
 __all__ = ['Configuration']
 
 # Project requirements
@@ -99,7 +102,7 @@ class Configuration(object):
                     self.headers.add('accept', self.FLAVORS[flavor]['accept'])
 
         # set form type and default if noone is present
-        if 'content-type' not in self.headers and self.verb in('POST', 'PUT'):
+        if 'content-type' not in self.headers and self.verb in ('POST', 'PUT', 'PATCH'):
             self.headers['content-type'] = self.FLAVORS['form']['content-type']
             
         return Request(self)
@@ -109,6 +112,15 @@ class Configuration(object):
         self.processors.insert(0, feature)
         return self
 
+    def secure(self, value=None, port=None):
+        """Force connection using https protocol at port specified"""
+        if isinstance(value, bool):
+            scheme    = 'http' if not value else 'https'
+            self.uri  = _SCHEME_RE.sub(scheme + "://\g<url>", self.uri)
+        if isinstance(port, int):
+            self.uri = _PORT_RE.sub("\g<host>:" + port + "\g<url>", self.uri)
+        return self
+        
     def compress(self):
         """Notify server that we will be zipping request"""
         self.use_gzip = True
