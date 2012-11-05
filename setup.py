@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 setup(name="sleipnir-restfulie",
-      version="0.16pre1",
+      version="0.16pre2",
       description="Writing hypermedia aware resource based clients and servers",
       author="Caelum Objects <http://restfulie.caelum.com.br/>, Carlos Martín",
       author_email="inean.es@gmail.com",
@@ -13,7 +13,7 @@ setup(name="sleipnir-restfulie",
       packages=find_packages(),      
       license="Apache 2.0",
       keywords="rest, async, tornado, http, hypermedia",
-      zip_safe=True,
+      zip_safe=False,
       install_requires= [
           "oauth2   >= 1.5",
           "tornado  >= 2.3.0",
