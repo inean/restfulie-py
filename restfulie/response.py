@@ -28,11 +28,8 @@ class Response(object):
         self._resource = None
 
     def __getattr__(self, key):
-        return self.resource[key]
+        return self.resource.key
 
-    def __contains__(self, key):
-        return key in self.resource
-        
     @property
     def headers(self):
         """Returns HTTP headers"""
@@ -56,7 +53,13 @@ class Response(object):
             converter = Converters.marshaller_for(content_type.split(';')[0])
             self._resource = converter.unmarshal(self._response.buffer)
         return self._resource
-    
+
+    @property
+    def error(self):
+        if not hasattr(self, '_error'):
+            self._error = self.resource.error()
+        return self._error
+
     @property
     def links(self):
         """Returns the Links of the header"""
@@ -66,13 +69,7 @@ class Response(object):
             self._links.update([link for link in Links.parse(values)])
         return self._links
 
-    def link(self, rel):
+    def link(self, rel, default=None):
         """Get a link with 'rel' from header"""
-        return self.links.rel
-
-    @property
-    def error(self):
-        if not hasattr(self, '_error'):
-            self._error = self.resource.error()
-        return self._error
+        return self.links.rel(rel, default)
         
