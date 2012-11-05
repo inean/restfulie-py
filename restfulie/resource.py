@@ -32,7 +32,7 @@ class Resource(object):
         """Returns a list of all links."""
         raise NotImplementedError
 
-    def link(self, rel):
+    def link(self, rel, default=None):
         """Return a Link with rel."""
         raise NotImplementedError
 

@@ -65,6 +65,9 @@ class JsonResource(Resource):
     def __iter__(self):
         return self._data.iteritems()
 
+    def __contains__(self, key):
+        return key in self._data
+        
     def __getattr__(self, key):
         if not key.startswith("_"):
             return getattr(self._data, key)
@@ -91,7 +94,7 @@ class JsonResource(Resource):
             # store error, only one is allowed
             elif key == "_error":
                 assert self._error is None
-                self._error = self._error or value
+                self._error = self._parse_data(self.JsonData(), value)
             # Just ignore protected args"
             elif key.startswith("_"):
                 logging.warning("Ignoring " + key)
