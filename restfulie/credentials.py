@@ -73,7 +73,11 @@ class Credentials(object):
 
     def __setattr__(self, name, value):
         if not name.startswith("_"):
-            self._properties[name] = value
+            # store as callback if value is a callable
+            if callable(value):
+                self._callbacks[name]  = value
+            else:
+                self._properties[name] = value
         else:
             # default op
             object.__setattr__(self, name, value)
