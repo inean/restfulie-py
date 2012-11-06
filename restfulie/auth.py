@@ -374,4 +374,5 @@ class OAuthMixin(AuthMixin):
             # fetch token
             token = self._authenticate_sync(credentials)
             self._update_credentials(credentials, token)
+            self.sign(credentials, request, env)
 
