@@ -28,7 +28,7 @@ class Response(object):
         self._resource = None
 
     def __getattr__(self, key):
-        return self.resource.key
+        return getattr(self.resource, key)
 
     @property
     def headers(self):
@@ -48,18 +48,18 @@ class Response(object):
     @property
     def resource(self):
         """Unmarshalled object of the response body"""
-        if not self._resource:
-            content_type = self._response.headers.get_list('content-type')[0]
-            converter = Converters.marshaller_for(content_type.split(';')[0])
+        if self._resource is None:
+            marshalto = self._response.headers.get_list('content-type')[0]
+            converter = Converters.marshaller_for(marshalto.split(';')[0])
             self._resource = converter.unmarshal(self._response.buffer)
         return self._resource
 
     @property
     def error(self):
-        if not hasattr(self, '_error'):
-            self._error = self.resource.error()
-        return self._error
+        """Get exception if any from server"""
+        return self.resource.error()
 
+    #pylint: disable-msg=W0201
     @property
     def links(self):
         """Returns the Links of the header"""

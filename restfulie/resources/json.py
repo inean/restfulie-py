@@ -79,17 +79,8 @@ class JsonResource(Resource):
         be a dict like instance
         """
         for key, value in data.iteritems():
-            # process data
-            if isinstance(value, dict):
-                root[key] = self._parse_data(self.JsonData(), value)
-            # process collections
-            elif isinstance(value, (list, tuple,)):
-                root[key] = [
-                    self._parse_data(self.JsonData(), val)
-                    for val in value
-                ]
             # process links
-            elif key == "_links":
+            if key == "_links":
                 self._parse_links(data)
             # store error, only one is allowed
             elif key == "_error":
@@ -98,10 +89,20 @@ class JsonResource(Resource):
             # Just ignore protected args"
             elif key.startswith("_"):
                 logging.warning("Ignoring " + key)
+            # process data
+            elif isinstance(value, dict):
+                root[key] = self._parse_data(self.JsonData(), value)
+            # process collections
+            elif isinstance(value, (list, tuple,)):
+                root[key] = []
+                for val in value:
+                    if isinstance(val, dict):
+                        val = self._parse_data(self.JsonData(), val)
+                    root[key].append(val)
             # last resource: Store key - value pair
             else:
                 root[key] = value
-            return root
+        return root
 
     #pylint: disable-msg=W0142
     def _parse_links(self, data):
