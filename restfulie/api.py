@@ -58,10 +58,10 @@ class BaseAPI(object):
     @classmethod
     def _get(cls, client, auth, endpoint, flavor, args, callback):
         """Implementation of verb GET"""
-        return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
-            .auth(client.credentials, method=auth)                           \
-            .accepts(flavor)                                                 \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)                 \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
+            .auth(client.credentials, method=auth)            \
+            .accepts(flavor)                                  \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
             .get(callback=callback, params=args)
 
     @classmethod
@@ -75,10 +75,10 @@ class BaseAPI(object):
         if any((hasattr(arg, "read") for arg in args.itervalues())):
             flavor = "multipart"
             
-        return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
-            .as_(flavor)                                                     \
-            .auth(client.credentials, method=auth)                           \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)                 \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
+            .as_(flavor)                                      \
+            .auth(client.credentials, method=auth)            \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
             .post(callback=callback, **args)
 
     @classmethod
@@ -92,10 +92,10 @@ class BaseAPI(object):
         if any((hasattr(arg, "read") for arg in args.itervalues())):
             flavor = "multipart"
             
-        return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
-            .as_(flavor)                                                     \
-            .auth(client.credentials, method=auth)                           \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)                 \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
+            .as_(flavor)                                      \
+            .auth(client.credentials, method=auth)            \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
             .put(callback=callback, **args)
 
     @classmethod
@@ -108,19 +108,19 @@ class BaseAPI(object):
         # See also:
         # https://datatracker.ietf.org/doc/draft-ietf-appsawg-json-patch/
             
-        return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
-            .as_(flavor)                                                     \
-            .auth(client.credentials, method=auth)                           \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)                 \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
+            .as_(flavor)                                      \
+            .auth(client.credentials, method=auth)            \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
             .patch(callback=callback, **args)
 
     @classmethod
     def _delete(cls, client, auth, endpoint, flavor, args, callback):
         """Implementation of verb DELETE"""
-        return Restfulie.at(cls.API_BASE + endpoint, cls.FLAVORS, cls.CHAIN) \
-            .auth(client.credentials, method=auth)                           \
-            .accepts(flavor)                                                 \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)                 \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
+            .auth(client.credentials, method=auth)            \
+            .accepts(flavor)                                  \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
             .get(callback=callback, params=args)
 
         
@@ -137,9 +137,10 @@ class BaseAPI(object):
             raise AttributeError(err)
 
         # build endpoint
-        endpoint = path % args
+        uri      = path % args
         auth     = call.get("auth")
         verb     = getattr(cls, "_" + call["method"])
+        endpoint = uri if uri.startswith('http') else cls.API_BASE + uri
 
         # remove used args
         func = lambda x: '%%(%s)' % x[0] not in path
