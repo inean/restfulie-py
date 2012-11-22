@@ -23,7 +23,6 @@ __all__ = [
     ]
 
 # Project requirements
-from tornado.gen import engine, Task
 from tornado.httputil import url_concat
 from tornado.httpclient import HTTPClient, AsyncHTTPClient
 
@@ -78,7 +77,6 @@ class AuthenticationSyncProcessor(AuthenticationProcessor):
 class AuthenticationAsyncProcessor(AuthenticationProcessor):
     """Abstract class for authentication methods. Async"""
 
-    @engine
     def execute(self, callback, chain, request, env):
         assert not chain or len(chain) == 0
         method = AuthenticationProcessor.execute
@@ -101,8 +99,12 @@ class AuthMixin(object):
 
     __metaclass__ = MetaAuth
 
-    def authorize(self, credentials, request, env):
-        """Command called to be runned"""
+    def authorize(self, credentials, request, env, callback):
+        """Set authorization content for this request"""
+        raise NotImplementedError('Subclasses must implement this method')
+
+    def authorize_sync(self, credentials, request, env):
+        """Set authorization content for this request sincronously"""
         raise NotImplementedError('Subclasses must implement this method')
 
 
@@ -138,7 +140,7 @@ class ExecuteRequestProcessor(RequestProcessor):
             use_gzip = request.use_gzip,
             connect_timeout = request.connect_timeout,
             request_timeout = request.request_timeout)
-        return resource
+        return response
 
     def execute(self, callback, chain, request, env):
         return self._sync(request, env) \

@@ -32,6 +32,7 @@ class Credentials(object):
     SECRETS = {
         "token_key"              : None,
         "token_secret"           : None,
+        "oauth_session_handle"   : None,
     }
     
     __slots__ = ("_mechanisms", "_properties", "_callbacks",)

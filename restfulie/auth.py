@@ -62,6 +62,8 @@ class BasicAuth(AuthMixin):
 class OAuthMixin(AuthMixin):
     """ oauth method """
 
+    implements = "oauth"
+    
     @property
     def request_url(self):
         """Get request_token url according to OAuth 1.0 specs"""
@@ -200,6 +202,38 @@ class OAuthMixin(AuthMixin):
     ##
     # OAuth access methods
     #
+    def renew_token(self, credentials, callback, method="POST"):
+        """
+        Renew an already used token
+        """
+
+        if not credentials.oauth_session_handle:
+            raise HandShakeError("token_not_renewable")
+
+        self._fetch(
+            self._get_consumer(credentials),
+            self._get_token(credentials),
+            self.access_url, callback,
+            method=method,
+            params=credentials.to_dict('oauth_session_handle')
+        )
+        
+    def renew_token_sync(self, credentials, method="POST"):
+        """
+        Renew an already used token syncronously
+        """
+
+        if not credentials.oauth_session_handle:
+            raise HandShakeError("token_not_renewable")
+
+        return self._fetch_sync(
+            self._get_consumer(credentials),
+            self._get_token(credentials),
+            self.access_url,
+            method=method,
+            params=credentials.to_dict('oauth_session_handle')
+        )
+
     def access_token(self, credentials, token, verifier, callback, method="POST"):
         """
         After user has authorized the request token, get access token
@@ -315,6 +349,20 @@ class OAuthMixin(AuthMixin):
     @engine
     def _authenticate(self, credentials, callback):
         token = None
+
+        # First try, if possible, to renew token
+        try:
+            token = yield Task(self.renew_token, credentials)
+            callback(token)
+            return
+        except HandShakeError, err:
+            pass
+        except HTTPError, err:
+            if err != 'invalid_session_handle':
+                # reset credentials
+                credentials.oauth_session_handle = None
+
+        # Last chance, try to get a new token
         try:
             if credentials.oauth_callback_handler:
                 # Use PIN based OAuth
@@ -335,6 +383,16 @@ class OAuthMixin(AuthMixin):
 
     def _authenticate_sync(self, credentials):
         token = None
+        # First try, if possible, to renew token
+        try:
+            return self.renew_token_sync(credentials)
+        except HandShakeError, err:
+            pass
+        except HTTPError, err:
+            if err != 'invalid_session_handle':
+                # reset credentials
+                credentials.oauth_session_handle = None
+
         if credentials.oauth_callback_handler:
             # Use PIN based OAuth
             token = self.request_token_sync(credentials)
@@ -352,9 +410,9 @@ class OAuthMixin(AuthMixin):
         if isinstance(token, Token):
             credentials.store(self.implements)['token']=token
 
-
     ##
     # Auth Main methods
+    ##
     @engine
     def authorize(self, credentials, request, env, callback):
         response = None
