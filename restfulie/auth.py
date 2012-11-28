@@ -39,10 +39,7 @@ class AuthError(Exception):
 
 class HandShakeError(Exception):
     """Error on auth process"""
-    def __init__(self, response):
-        Exception.__init__(self, response.error)
-        self.response = response
-    
+
 #pylint: disable-msg=R0903
 class BasicAuth(AuthMixin):
     """Processor responsible for making HTTP simple auth"""
@@ -93,9 +90,9 @@ class OAuthMixin(AuthMixin):
     def _fetch(self, consumer, token, uri, callback, **kwargs):
         """Send request async"""
         def on_response(response):
-            if not response.error:
-                return callback(Token.from_string(response.buffer.read()))
-            raise HandShakeError(response)
+            if hasattr(response, 'error') and response.error:
+                raise HandShakeError(response.error)
+            return callback(Token.from_string(response.buffer.read()))
 
         # process
         request = self._get_request(consumer, token, uri, **kwargs)
@@ -377,7 +374,7 @@ class OAuthMixin(AuthMixin):
             callback(token)
         # A handshake error is also notified.
         except HandShakeError, err:
-            callback(err.response.error)
+            callback(err.message)
         except HTTPError, err:
             callback(err)
 
