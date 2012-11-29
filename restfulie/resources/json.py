@@ -79,6 +79,11 @@ class JsonResource(Resource):
         be a dict like instance
         """
         for key, value in data.iteritems():
+            # remove unicode
+            if isinstance(key, unicode):
+                key = key.encode('utf-8')
+            if isinstance(value, unicode):
+                value = value.encode('utf-8')
             # process links
             if key == "_links":
                 self._parse_links(data)
