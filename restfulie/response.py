@@ -18,17 +18,37 @@ __all__ = ['Response']
 # Project requirements
 from .converters import Converters
 from .links import Links
-
+from .cached import Cached
 
 class Response(object):
     """Handle and parse a HTTP response"""
 
+    __slots__ = ("_response", "_resource", "_cached")
+    
     def __init__(self, response):
         self._response = response
         self._resource = None
-
+        self._cached   = None
+        
     def __getattr__(self, key):
-        return getattr(self.resource, key)
+        # already cached stuff
+        if self._cached is None:
+            self._cached = Cached(self.resource)
+        # delegate getattr
+        return getattr(self._cached, key)
+
+    def __setattr__(self, key, value):
+        # private stuff
+        if key in self.__slots__:
+            object.__setattr__(self, key, value)
+            return
+        # already cached stuff
+        if self._cached is None:
+            self._cached = Cached(self.resource)
+        setattr(self._cached, key, value)
+            
+    def __iter__(self):
+        return iter(self.resource)
 
     @property
     def headers(self):
