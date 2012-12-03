@@ -27,19 +27,19 @@ class Converters(object):
 
     types = {}
 
-    @staticmethod
-    def register(a_type, converter):
+    @classmethod
+    def register(cls, a_type, converter):
         """Register a converter for the given type"""
-        Converters.types[a_type] = converter
+        cls.types[a_type] = converter
 
-    @staticmethod
-    def marshaller_for(a_type):
+    @classmethod
+    def marshaller_for(cls, a_type):
         """Return a converter for the given type"""
         if type(a_type) in (str, unicode,):
             # common case. Throw a key error exception if no valid one
             # has been registered"
             if ";" not in a_type:
-                return Converters.types[a_type]
+                return cls.types[a_type]
             # Passed a composed string (';' separated)
             a_type, key = a_type.split(";"), a_type
         else:
@@ -49,11 +49,15 @@ class Converters(object):
 
         # Dinamically, create a valid converter if required for this
         # kind of element.Converters are stateless,
-        return Converters.types.setdefault(   \
+        return cls.types.setdefault(   \
             key,                              \
-            Converters.types[a_type[0]].__class__(a_type[1:]))
+            cls.types[a_type[0]].__class__(a_type[1:]))
 
-
+    @classmethod
+    def for_type(cls, a_type):
+        return cls.marshaller_for(a_type)
+        
+    
 class MetaConverter(type):
     """Converter Metaclass"""
 

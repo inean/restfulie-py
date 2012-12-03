@@ -148,12 +148,16 @@ class JsonConverter(ConverterMixin):
     #pylint: disable-msg=R0201
     def marshal(self, content):
         """Produces a JSON representation of the given content"""
+        if hasattr(content, 'write'):
+            return json.dump(content)    
         return json.dumps(content)
 
     #pylint: disable-msg=R0201
     def unmarshal(self, json_content):
         """Produces an object for a given JSON content"""
-        return JsonResource(json.load(json_content))
+        if hasattr(json_content, 'read'):
+            return JsonResource(json.load(json_content))
+        return JsonResource(json.loads(json_content))
 
 class JsonPatcher(PatcherMixin):
     """Merge and create patchs in jsonpatch format"""
