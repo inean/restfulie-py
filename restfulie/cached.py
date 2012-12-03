@@ -11,9 +11,22 @@ class Cached(object):
         self._notify_  = notify
         if self._wrapper_ == 0:
             raise AttributeError(wrapper)
-    def __repr__(self):
-        return repr(self._cache_)
 
+    def __contains__(self, key):
+        return key in self._wrapper_
+        
+    def __iter__(self):
+        for key, value in self._wrapper_.iteritems():
+            yield (key, self._cache_.get(key, value),)
+
+    def __repr__(self):
+        dct = dict(iter(self))
+        dct.update(self._cache_)
+        return repr(dct)
+
+    def __getitem__(self, key):
+        return self._cache_.get(key, self._wrapper_[key])
+            
     def __getattr__(self, key):
         # already cached stuff
         if key in self._cache_:
@@ -54,7 +67,11 @@ class CachedDict(Cached):
 
     __infunc__  = lambda self, x, y: y in x
     __getfunc__ = lambda self, x, y: x.get(y)
+    __dict__    = True
 
+    def __iter__(self):
+        return self._wrapper_.iteritems()
+    
     def __getattr__(self, key):
         try:
             return super(CachedDict, self).__getattr__(key)
@@ -65,10 +82,21 @@ class CachedDict(Cached):
 class CachedList(Cached):
 
     __slots__   = ()
+    __list__    = True
 
     def __init__(self, wrapper, notify):
         super(CachedList, self).__init__(wrapper, notify)
         self._cache_ = [None] * len(wrapper)
+
+    def __repr__(self):
+        return repr(list(iter(self)))
+
+    def __len__(self):
+        return len(self._cache_)
+        
+    def __iter__(self):
+        for index, value in enumerate(self._cache_):
+            yield self._wrapper_[index] if value is None else value
 
     def __getattr__(self, key):
         raise AttributeError(key)

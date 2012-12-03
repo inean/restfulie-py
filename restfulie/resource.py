@@ -28,6 +28,9 @@ class ResourceError(Exception):
 class Resource(object):
     """Prepares a connection. only get a pika connection is lazy created"""
 
+    def __getitem__(self, key):
+        raise NotImplementedError
+        
     def links(self):
         """Returns a list of all links."""
         raise NotImplementedError

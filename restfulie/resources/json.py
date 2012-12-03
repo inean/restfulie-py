@@ -39,8 +39,14 @@ class JsonResource(Resource):
 
     class JsonData(dict):
         """Simple Dic that allow access to keys as attributes"""
+        __dict__ = True
         def __getattr__(self, key):
             return self[key]
+        def __setattr__(self, key, value):
+            if key not in self:
+                dict.__setattr__(self, key, value)
+                return
+            self[key] = value
             
     def __init__(self, data):
         """JsonResource attributes can be accessed with 'dot'"""
@@ -70,6 +76,9 @@ class JsonResource(Resource):
 
     def __contains__(self, key):
         return key in self._data
+
+    def __getitem__(self, key):
+        return self._data[key]
         
     def __getattr__(self, key):
         if not key.startswith("_"):

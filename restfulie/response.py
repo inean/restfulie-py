@@ -17,6 +17,7 @@ __all__ = ['Response']
 
 # Project requirements
 from .converters import Converters
+from .patchers import Patchers
 from .links import Links
 from .cached import Cached
 
@@ -92,4 +93,11 @@ class Response(object):
     def link(self, rel, default=None):
         """Get a link with 'rel' from header"""
         return self.links.rel(rel, default)
+
+    def diff(self):
+        """Create a valid document for response type"""
+        patcher_type = self._response.headers.get_list('content-type')[0]
+        patcher = Patchers.for_type(patcher_type.split(';')[0])
+        return patcher.make(self._resource, self._cached)
+
         
