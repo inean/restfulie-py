@@ -20,6 +20,8 @@ try:
 except ImportError:
     # python 2.5
     import simplejson as json
+# for patcher
+import jsonpatch
 
 __all__ = []
 
@@ -28,7 +30,8 @@ __all__ = []
 # local submodule requirements
 from ..resource import Resource
 from ..links import Links, Link
-from ..converters import ConverterMixin
+from ..converters import Converters, ConverterMixin
+from ..patchers import PatcherMixin, PatcherError
 
 
 class JsonResource(Resource):
@@ -152,4 +155,39 @@ class JsonConverter(ConverterMixin):
         """Produces an object for a given JSON content"""
         return JsonResource(json.load(json_content))
 
+class JsonPatcher(PatcherMixin):
+    """Merge and create patchs in jsonpatch format"""
 
+    types = JsonConverter.types + \
+            ['application/json-patch', 'text/json-patch', 'json-patch']
+
+    def __init__(self):
+        PatcherMixin.__init__(self)
+        
+    @staticmethod
+    def __get_python_container(container):
+        """
+        Sugar method to get a valid python container from a json string
+        """
+        try:
+            if isinstance(container, basestring) or hasattr(container, 'read'):
+                container = Converters.for_type('json').unmarshal(container)
+        except Exception, err:
+            raise PatcherError(err.message)
+        return container
+    
+    def apply(self, doc, patch, in_place=False):
+        # get a valid dict of fail
+        doc = self.__get_python_container(doc)
+        # apply patch
+        return jsonpatch.apply_patch(doc, patch, in_place)
+
+    def make(self, src, dst):
+        src = self.__get_python_container(src)
+        dst = self.__get_python_container(dst)
+        return jsonpatch.make_patch(src, dst).patch
+            
+    
+            
+        
+        
