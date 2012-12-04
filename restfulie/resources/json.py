@@ -149,7 +149,10 @@ class JsonResource(Resource):
 class JsonConverter(ConverterMixin):
     """Converts objects from and to JSON"""
 
-    types = ['application/json', 'text/json', 'json']
+    types = [
+        'application/json', 'text/json', 'json',
+        'application/json-patch', 'text/json-patch', 'json-patch'
+    ]
 
     def __init__(self):
         ConverterMixin.__init__(self)
@@ -171,8 +174,7 @@ class JsonConverter(ConverterMixin):
 class JsonPatcher(PatcherMixin):
     """Merge and create patchs in jsonpatch format"""
 
-    types = JsonConverter.types + \
-            ['application/json-patch', 'text/json-patch', 'json-patch']
+    types = JsonConverter.types
 
     def __init__(self):
         PatcherMixin.__init__(self)
