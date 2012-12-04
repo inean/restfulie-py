@@ -72,9 +72,6 @@ class BaseAPI(object):
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        if any((hasattr(arg, "read") for arg in args.itervalues())):
-            flavor = "multipart"
-            
         return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
             .as_(flavor)                                      \
             .auth(client.credentials, method=auth)            \
@@ -89,9 +86,6 @@ class BaseAPI(object):
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        if any((hasattr(arg, "read") for arg in args.itervalues())):
-            flavor = "multipart"
-            
         return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
             .as_(flavor)                                      \
             .auth(client.credentials, method=auth)            \
