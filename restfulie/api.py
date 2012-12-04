@@ -76,7 +76,7 @@ class BaseAPI(object):
             .as_(flavor)                                      \
             .auth(client.credentials, method=auth)            \
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
-            .post(callback=callback, **args)
+            .post(args, callback=callback)
 
     @classmethod
     def _put(cls, client, auth, endpoint, flavor, args, callback):
@@ -90,7 +90,7 @@ class BaseAPI(object):
             .as_(flavor)                                      \
             .auth(client.credentials, method=auth)            \
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
-            .put(callback=callback, **args)
+            .put(args, callback=callback)
 
     @classmethod
     def _patch(cls, client, auth, endpoint, flavor, args, callback):
@@ -106,7 +106,7 @@ class BaseAPI(object):
             .as_(flavor)                                      \
             .auth(client.credentials, method=auth)            \
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
-            .patch(callback=callback, **args)
+            .patch(args, callback=callback)
 
     @classmethod
     def _delete(cls, client, auth, endpoint, flavor, args, callback):
@@ -119,7 +119,7 @@ class BaseAPI(object):
 
         
     @classmethod
-    def invoke(cls, client, call, args, callback=None):
+    def invoke(cls, client, call, body, args, callback=None):
         """Invoke method"""
 
         # check that requirements are passed
@@ -130,6 +130,10 @@ class BaseAPI(object):
             err = "Missing arg '%s' for '%s'" % (req, path)
             raise AttributeError(err)
 
+        # check if body content is required
+        if call.get("body", False) and body is None:
+            raise AttributeError("Missing body content")
+            
         # build endpoint
         uri      = path % args
         auth     = call.get("auth")
@@ -140,8 +144,12 @@ class BaseAPI(object):
         func = lambda x: '%%(%s)' % x[0] not in path
         args = dict(ifilter(func, args.iteritems()))
                 
+        # we allow only, body or args, bbut not both
+        if args and body:
+            raise AttributeError("Unused keys found,", repr(args))
+        
         # invoke
-        return verb(client, auth, endpoint, flavor, args, callback)
+        return verb(client, auth, endpoint, flavor, body or args, callback)
 
         
 

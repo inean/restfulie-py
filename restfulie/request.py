@@ -24,19 +24,14 @@ class Request(object):
     def __init__(self, config):
         self._config = config
 
-    def __call__(self, callback=None, params=None, **payload):
+    def __call__(self, body=None, params=None, callback=None):
         """
         Perform the request.The optional payload argument is sent to
         the server
         """
-        #Add tuple support
-        if None in payload and len(payload) == 1:
-            payload = payload[None]
-            assert isinstance(payload, (tuple, list,))
-            
         env = {
             'params'  : params,
-            'payload' : payload, 
+            'payload' : body,
             }
 
         procs = list(self._config.processors)
