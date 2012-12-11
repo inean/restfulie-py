@@ -14,16 +14,52 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 import hashlib
-import cStringIO
+import tempfile
 
 __all__ = []
 
 # Project requirements
+from tornado.escape import utf8
 
 # local submodule requirements
 from ..converters import ConverterMixin
 
+TEMP_FILE_SIZE = 128 * 1024
 
+class FileWrapper(object):
+    """
+    Simple wrapper to allow get length of content. Required by HTTP
+    handlers
+    """
+    
+    __slots__ = ("_file",)
+    
+    def __init__(self, wrapped):
+        object.__setattr__(self, "_file", wrapped)
+
+    def __len__(self):
+        # get current pos
+        curpos = self._file.tell()
+        # got to end
+        self._file.seek(0, 2)
+        # compute length
+        length = self._file.tell()
+        # restore pos
+        self._file.seek(curpos)
+        return length
+        
+    def __getattr__(self, key):
+        return getattr(self._file, key)
+        
+    def __setattr__(self, key, value):
+        setattr(self._file, key, value)
+        
+    def read(self, *args):
+        """Overrided read to return always an utf8 string"""
+        return utf8(self._file.read(*args))
+        
+        
+        
 class Part(object):
 
     EOL="\r\n".encode('latin-1')
@@ -84,7 +120,12 @@ class MultiPartConverter(ConverterMixin):
         assert self.boundary
 
         # ouput buffer
-        output = cStringIO.StringIO()
+        try:
+            # Use a memory file solution for content <= 128Kb
+            output = tempfile.SpooledTemporaryFile(TEMP_FILE_SIZE)
+        except Exception:
+            # python 2.5
+            output = tempfile.TemporaryFile()
 
         # parse params
         for key, value in content.iteritems():
@@ -102,9 +143,8 @@ class MultiPartConverter(ConverterMixin):
             param.write(output)
 
         output.writelines(("--", self.boundary, "--", Part.EOL))
-        retval = output.getvalue()
-        
-        # free buffer and return contents
-        output.close()
-        return retval
+
+        # return output stored file
+        output.seek(0)
+        return FileWrapper(output)
 

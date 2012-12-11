@@ -321,7 +321,11 @@ class OAuthMixin(AuthMixin):
         # process post contents if required
         body, parameters = env.get('body', ''), None
         if isform and body:
-            parameters = parse_qs(body)
+            contents = body
+            if hasattr(body, "read"):
+                contents = body.read()
+                body.seek(0)
+            parameters = parse_qs(contents)
 
         # update request uri
         oauth_request = Request.from_consumer_and_token(
