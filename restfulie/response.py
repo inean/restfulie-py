@@ -70,7 +70,8 @@ class Response(object):
     def resource(self):
         """Unmarshalled object of the response body"""
         if self._resource is None:
-            marshalto = self._response.headers.get_list('content-type')[0]
+            marshalto = self._response.headers.get_list('content-type')
+            marshalto = marshalto[0] if marshalto else 'text/plain'
             converter = Converters.marshaller_for(marshalto.split(';')[0])
             self._resource = converter.unmarshal(self._response.buffer)
         return self._resource
