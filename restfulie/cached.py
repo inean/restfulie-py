@@ -1,3 +1,6 @@
+import re
+import itertools
+
 class Cached(object):
     
     __infunc__  = lambda self, x, y: hasattr(x, y)
@@ -84,6 +87,8 @@ class CachedList(Cached):
     __slots__   = ()
     __list__    = True
 
+    __RE        = re.compile(' |@')
+    
     def __init__(self, wrapper, notify):
         super(CachedList, self).__init__(wrapper, notify)
         self._cache_ = [None] * len(wrapper)
@@ -103,11 +108,35 @@ class CachedList(Cached):
 
     def __setattr__(self, key, value):
         object.__setattr__(self, key, value)
+
+    def __getkey(self, key):
+        guards = self.__RE.sub("", key).split(",")
+        guards = list(itertools.imap(lambda x: x.split("="), guards))
+        # parse values to strip spurius data
+        for item in guards:
+            try:
+                value = int(item[1])
+            except ValueError:
+                value = item[1].strip(' \'"')
+            finally:
+                item[1] = value
+        for index, dct in enumerate(self._wrapper_):
+            if isinstance(dct, dict):
+                dct_items = dct.items()
+                if all([tuple(item) in dct_items for item in guards]):
+                    return index
+        raise AttributeError("Index not found '%s'" % key)
         
     def __getitem__(self, key):
+        # Try to find a json based pointer
+        if isinstance(key, basestring):
+            key = self.__getkey(key)
         # already cached stuff
         if self._cache_[key] is not None:
             return self._cache_[key]
+        # Default behaviour
+        assert isinstance(key, int)
+        
         wrapper = self._wrapper_[key]
         wrptype = self._get_type(wrapper)
         if wrptype in self.__factory__:
