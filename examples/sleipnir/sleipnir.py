@@ -4,97 +4,125 @@
 # absolute requirements (only because  we are on async mode)
 from tornado.ioloop import IOLoop
 from datetime import timedelta
+from contextlib import closing
 
 # local requirements
-from restfulie.client import Client
-from hipermedia.apis  import *
+from restfulie import codes
+
+# API wrapper
+from hipermedia.api  import Sleipnir
+from hipermedia.apis import * # Extends Sleipnir
 
 # sugar
-from functools import partial, wraps
 from pprint import pprint
 
-# for HTTP codes and messages only
-import httplib
+import sys
+import signal
+import random
+import functools
 
-# simple decorator to exit application
-def stop(func):
-    """check that all calls has been executed. If so, stop loop"""
-    def wrapper(*args, **kwargs):
-        func(*args, **kwargs)
-        IOLoop.instance().total_calls -= 1
-        if not IOLoop.instance().total_calls:
-            IOLoop.instance().stop()
-    return wrapper
-
-# Auth pin callback
-def get_pin_cb(url):
-    print 'Please authorize: ' + url
-    verifier = raw_input('PIN: ').strip()
-    return verifier
-
-# Call async process
-@stop
-def get_users_cb(method, response):
-    print "\nResponse to call '%s':" % method
-    print "  Status %d: %s" %(response.code, httplib.responses[response.code])
-    IOLoop.instance().total_calls
-
-    if response.code in (httplib.OK, httplib.NO_CONTENT,):
-        if method == 'show':
-            print "  User ID", response.resource.user.id
-        print '  links (%d):' % len(response.links),  str([str(link) for link in response.links])
-    else:
-        if response.error.details:
-            for line in response.error.details.traceback:
-                print line[:-1]
-        else:
-            print "Error message: ", response.error.value
-
-@stop
-def get_search_cb(method, response):
-    print "\nResponse to call '%s':" % method
-    print "  Status %d: %s" %(response.code, httplib.responses[response.code])
-    if response.code == httplib.OK:
-        pprint(response.resource._dict)
+class Callbacks(object):
+    """Set of callbacks"""
     
+    @staticmethod
+    def _entropy(length):
+        return "".join(str(random.randint(0,9)) for _ in xrange(length))
+
+    @classmethod
+    def on_me(cls, client, me):
+        assert codes.is2XX(me.code)
+
+        # update Person details
+        me.name    = "Jon" + cls._entropy(3)
+        me.surname = "Doe" + cls._entropy(3)
+
+        # update contacts value
+        contacts = me.contacts
+        contacts[0].value = cls._entropy(9)
+        contacts[1].value = cls._entropy(9)
+        
+        # Json style to access dict collections
+        assert me.contacts['@service="telephone",@type="WORK"'] == me.contacts[0]
+
+        # request an update
+        client.accounts.update(me.diff(), callback=cls.on_updated)
+
+    @staticmethod
+    def on_updated(response):
+        assert codes.is2XX(response.code)
+        # TODO:
+        # allow hipermedia if any link is presented
+        # if 'update_avatar' in response.links:
+        #     client(response).update_avatar(foo) o 
+        #     client(response).update_avatar.post(foo)
+        #     with client(response) as flow:
+        #         flow.update_avatar(foo)  o
+        #         flow.update_avatar.post(foo)
+
+    @staticmethod
+    def on_progress(total, send):
+        print "{0} of {1} bytes %{2}".format(send, total, send * 100 / total)
+
+    @staticmethod
+    def on_update_avatar(response):
+        assert codes.is2XX(response.code)
+
+        
+class Console(Sleipnir):
+    """ Minimal credentials class"""
+    
+    def on_credential_required(self, properties, credential):
+        value = raw_input(str(credential).capitalize() + ': ').strip()
+        properties[credential] = value
+        
+    def on_pin_required(self, url):
+        print 'Please authorize: ' + url
+        verifier = raw_input('PIN: ').strip()
+        return verifier
+
+        
 if __name__ == "__main__":
     # create client
-    client = Client()
+    client = Console()
 
     # set credentials
     with client.configure() as conf:
         conf.consumer_key           = "5wXYSVHBaeapdzgCpwrQaw"
         conf.consumer_secret        = "xQAOPnRSv1WRMnZBiYtQUDkkSIuSyv3BHYM57FXStjU"
-        conf.oauth_callback         = "oob"
-        conf.oauth_callback_handler = get_pin_cb
-        #conf.token_key       = "iEqwrSFzXGkY3eKehpbtPw"
-        #conf.token_secret    = "pLaQ2sn9PT0WAodk0c6zxmWMTahqeM7Xwjj7Tp7JofA"
 
-    #gFIXME: Implement this
-    #net = client.authenticate()
-    #net.cancel()
-    
+        # Uncomment this for XAuth Based login
+        conf.username = "usal"
+        conf.password = "usal"
+        #conf.ask_to(client.on_credential_required, ("username", "password"))
+        
+        # Uncomment this to use OAuth 1.0a Out of Band mode
+        #conf.oauth_callback         = "oob"
+        #conf.oauth_callback_handler = client.on_pin_required
+
+        # Set with correct valuee to bypass auth handshake
+        #conf.token_key              = "<your token key here>"
+        #conf.token_secret           = "<your token secret here>"
+
+    # Set keyboard iterryution
+    signal.signal(signal.SIGINT, lambda x,y: sys.exit(0))
+        
     # Async auth call
-    client.persons("search",
-                   {"query" : "'car'"},
-                   partial(get_search_cb, "search")
-    )
+    client.me(callback=functools.partial(Callbacks.on_me, client));
+
     # Async call
-    with file("avatar.png") as f:
-        client.users("show",
-                     {"username" : "usal"},
-                     partial(get_users_cb, "show")
-        )
-        client.users("show_authorized",
-                    {"username" : "usal"},
-                     partial(get_users_cb, "show_authorized")
-        )
-        client.users("update",
-                     {"username" : "usal", "surname": "Martín", "avatar" : f},
-                     partial(get_users_cb, "update")
-        )
+    with closing(file("avatar.jpg")) as f:
+        # Theoretically, resrtfulie will save on disk body contents if
+        # its bigger than 128Kb. This prevent use of excess of memory
+        # when big files are transfered.
+        #
+        # See SpooledTemporaryFile class on python for more details
+        # how this work
+        response = client.accounts.update_avatar(f, Callbacks.on_update_avatar)
+        # Progress callback is called after CHUNK_SIZE (128Kb) is
+        # transfered and if more than 50ms has beeen transcurred after last
+        # success transfer of bytes
+        response.progress(Callbacks.on_progress)
 
     # start IOLoop
-    IOLoop.instance().total_calls = 4
-    IOLoop.instance().add_timeout(timedelta(seconds=20), IOLoop.instance().stop)
+    IOLoop.instance().add_timeout(timedelta(seconds=1), IOLoop.instance().stop)
     IOLoop.instance().start()

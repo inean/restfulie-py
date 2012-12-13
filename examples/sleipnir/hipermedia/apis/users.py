@@ -12,13 +12,14 @@ __author__   = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import required modules
-from restfulie.client import Extend, validate
+from sleipnir.core.decorators import cached
+from restfulie.client import Extend
 
 # local submodule requirements
-from ..api import API
+from ..api import API, APIMapper
 
 
-class Client(object):
+class Sleipnir(object):
     """This class will extend main Client object"""
 
     __metaclass__ = Extend
@@ -37,15 +38,15 @@ class Client(object):
         "required" : ['username'],
         },
         
-        "update": {
-            "endpoint" : '/users/show/%(username)s',
-            "method"   : 'post',
-            "auth"     : "sleipnir",
-            "required" : ['username'],
-        }
+      "update": {
+          "endpoint" : '/users/show/%(username)s',
+          "method"   : 'patch',
+          "auth"     : "sleipnir",
+          "required" : ['username', None],
+      }
     }
     
-    @validate('USERS_API')
-    def users(self, action, args, callback):
-        return API.invoke(self, self.USERS_API[action], args, callback)
-    
+    @property
+    @cached
+    def users(self):
+        return APIMapper(self, self.USERS_API)
