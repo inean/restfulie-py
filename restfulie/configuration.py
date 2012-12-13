@@ -77,9 +77,10 @@ class Configuration(object):
         self.verb            = None
 
         # Request extra arguments
-        self.use_gzip        = False
-        self.request_timeout = self.TIMEOUT
-        self.connect_timeout = self.TIMEOUT
+        self.use_gzip          = False
+        self.progress_callback = None
+        self.request_timeout   = self.TIMEOUT
+        self.connect_timeout   = self.TIMEOUT
         
     def __getattr__(self, value):
         """
@@ -124,6 +125,15 @@ class Configuration(object):
     def compress(self):
         """Notify server that we will be zipping request"""
         self.use_gzip = True
+        return self
+
+    def progress(self, progress_callback):
+        """
+        Allow to define a progress callback about operaiton. This
+        progress callback takes 2 arguments, total length, if any and
+        amount of bytes already transfered
+        """
+        self.progress_callback = progress_callback
         return self
         
     def until(self, request_timeout=None, connect_timeout=None):

@@ -123,6 +123,7 @@ class ExecuteRequestProcessor(RequestProcessor):
             headers=request.headers,
             body=env.get("body"),
             use_gzip = request.use_gzip,
+            progress_callback = request.progress_callback,
             connect_timeout = request.connect_timeout,
             request_timeout = request.request_timeout)
         return Response(response)
@@ -138,6 +139,7 @@ class ExecuteRequestProcessor(RequestProcessor):
             headers=request.headers,
             body=env.get("body"),
             use_gzip = request.use_gzip,
+            progress_callback = request.progress_callback,
             connect_timeout = request.connect_timeout,
             request_timeout = request.request_timeout)
         return response
