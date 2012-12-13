@@ -67,7 +67,7 @@ class Configuration(object):
     # Default tornado timeout
     TIMEOUT = 20
     
-    def __init__(self, uri, flavors=None, chain=None):
+    def __init__(self, uri, flavors=None, chain=None, compress=False):
         """Initialize the configuration for requests at the given URI"""
         self.uri             = uri
         self.headers         = HTTPHeaders()
@@ -75,9 +75,9 @@ class Configuration(object):
         self.processors      = chain or tornado_chain
         self.credentials     = {}
         self.verb            = None
+        self.use_gzip        = compress
 
         # Request extra arguments
-        self.use_gzip          = False
         self.progress_callback = None
         self.request_timeout   = self.TIMEOUT
         self.connect_timeout   = self.TIMEOUT
