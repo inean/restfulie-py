@@ -31,13 +31,12 @@ def __find(path, expr="*.py*"):
 
     index, pattern = 0, os.path.join(path, expr)
     if not os.path.isabs(path):
-        path = os.path.dirname(__file__)
-        index = len(path)
+        path    = os.path.abspath(os.path.dirname(__file__))
+        index   = len(path)
         pattern = os.path.abspath(os.path.join(path, pattern))
 
-    func = lambda x: x.split('.')[0].replace(os.sep, '.')[index + 1:]
+    func = lambda x: x[:x.rfind('.')].replace(os.sep, '.')[index + 1:]
     modules = set(itertools.imap(func, glob.glob(pattern)))
-    # remove '__init__' if present
     modules.remove("__init__")
     return modules
 
