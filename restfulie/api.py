@@ -48,6 +48,7 @@ class BaseAPI(object):
     API_BASE = None
     FLAVORS  = None
     CHAIN    = None
+    COMPRESS = False
 
     # Timeouts
     CONNECT_TIMEOUT = None
@@ -56,44 +57,47 @@ class BaseAPI(object):
     
     #pylint: disable-msg=W0613
     @classmethod
-    def _get(cls, client, auth, endpoint, flavor, args, callback):
+    def _get(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb GET"""
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
-            .auth(client.credentials, method=auth)            \
-            .accepts(flavor)                                  \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
+            .secure(*secure)                                            \
+            .auth(client.credentials, method=auth)                      \
+            .accepts(flavor)                                            \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .get(callback=callback, params=args)
 
     @classmethod
-    def _post(cls, client, auth, endpoint, flavor, args, callback):
+    def _post(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb POST"""
 
         #default to form-urlencode. If somthing that smells like a
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
-            .as_(flavor)                                      \
-            .auth(client.credentials, method=auth)            \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
+            .secure(*secure)                                            \
+            .as_(flavor)                                                \
+            .auth(client.credentials, method=auth)                      \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .post(args, callback=callback)
 
     @classmethod
-    def _put(cls, client, auth, endpoint, flavor, args, callback):
+    def _put(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb PUT"""
 
         #default to form-urlencode. If somthing that smells like a
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
-            .as_(flavor)                                      \
-            .auth(client.credentials, method=auth)            \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
+            .secure(*secure)                                            \
+            .as_(flavor)                                                \
+            .auth(client.credentials, method=auth)                      \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .put(args, callback=callback)
 
     @classmethod
-    def _patch(cls, client, auth, endpoint, flavor, args, callback):
+    def _patch(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb PATCH"""
 
         # JSON path expexts an array of objects. Internally, We need
@@ -102,19 +106,21 @@ class BaseAPI(object):
         # See also:
         # https://datatracker.ietf.org/doc/draft-ietf-appsawg-json-patch/
             
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
-            .as_(flavor)                                      \
-            .auth(client.credentials, method=auth)            \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
+            .secure(*secure)                                            \
+            .as_(flavor)                                                \
+            .auth(client.credentials, method=auth)                      \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .patch(args, callback=callback)
 
     @classmethod
-    def _delete(cls, client, auth, endpoint, flavor, args, callback):
+    def _delete(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb DELETE"""
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN) \
-            .auth(client.credentials, method=auth)            \
-            .accepts(flavor)                                  \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)  \
+        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
+            .secure(*secure)                                            \
+            .auth(client.credentials, method=auth)                      \
+            .accepts(flavor)                                            \
+            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .get(callback=callback, params=args)
 
         
@@ -125,6 +131,14 @@ class BaseAPI(object):
         # check that requirements are passed
         path = call["endpoint"]
         flavor = call.get("flavor")
+        compress = call.get("compress", cls.COMPRESS)
+        
+        # check if we should override uri security
+        secure = call.get("secure", [])
+        if not type(secure) in (list, tuple,):
+            secure = [secure]
+
+        # parse requirements
         requirements = call.get("required", ())
         for req in ifilter(lambda arg: arg not in args, requirements):
             err = "Missing arg '%s' for '%s'" % (req, path)
@@ -149,7 +163,9 @@ class BaseAPI(object):
             raise AttributeError("Unused keys found,", repr(args))
         
         # invoke
-        return verb(client, auth, endpoint, flavor, body or args, callback)
+        return verb(client,
+                    auth, endpoint, flavor, compress,
+                    secure, body or args, callback)
 
         
 
