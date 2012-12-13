@@ -75,7 +75,7 @@ class Credentials(object):
     def __setattr__(self, name, value):
         if not name.startswith("_"):
             # store as callback if value is a callable
-            if callable(value):
+            if callable(value) and name != "oauth_callback_handler":
                 self._callbacks[name]  = value
             else:
                 self._properties[name] = value
