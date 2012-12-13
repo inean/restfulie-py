@@ -13,7 +13,7 @@ __license__ = "See LICENSE.restfulie for details"
 # Import here any required modules.
 from itertools import ifilter
 
-__all__ = ['BaseAPI']
+__all__ = ['BaseAPI', 'BaseMapper']
 
 # Project requirements
 from .restfulie import Restfulie
@@ -39,6 +39,7 @@ from .restfulie import Restfulie
 # ------
 # DELETE.
 
+#pylint: disable-msg=R0903
 class BaseAPI(object):
     """
     Derive from here Custom API Implementations. All implementations
@@ -55,7 +56,7 @@ class BaseAPI(object):
     REQUEST_TIMEOUT = None
     
     
-    #pylint: disable-msg=W0613
+    #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _get(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb GET"""
@@ -66,6 +67,7 @@ class BaseAPI(object):
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .get(callback=callback, params=args)
 
+    #pylint: disable-msg=C0301, R0913, W0142        
     @classmethod
     def _post(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb POST"""
@@ -80,7 +82,8 @@ class BaseAPI(object):
             .auth(client.credentials, method=auth)                      \
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .post(args, callback=callback)
-
+        
+    #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _put(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb PUT"""
@@ -95,7 +98,8 @@ class BaseAPI(object):
             .auth(client.credentials, method=auth)                      \
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .put(args, callback=callback)
-
+        
+    #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _patch(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb PATCH"""
@@ -113,6 +117,7 @@ class BaseAPI(object):
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .patch(args, callback=callback)
 
+    #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _delete(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb DELETE"""
@@ -123,26 +128,17 @@ class BaseAPI(object):
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .get(callback=callback, params=args)
 
-        
+    #pylint: disable-msg=C0301, R0913, W0142        
     @classmethod
     def invoke(cls, client, call, body, args, callback=None):
         """Invoke method"""
 
         # check that requirements are passed
         path = call["endpoint"]
-        flavor = call.get("flavor")
-        compress = call.get("compress", cls.COMPRESS)
         
-        # check if we should override uri security
-        secure = call.get("secure", [])
-        if not type(secure) in (list, tuple,):
-            secure = [secure]
-
         # parse requirements
-        requirements = call.get("required", ())
-        for req in ifilter(lambda arg: arg not in args, requirements):
-            err = "Missing arg '%s' for '%s'" % (req, path)
-            raise AttributeError(err)
+        for req in ifilter(lambda x: x not in args, call.get("required", ())):
+            raise AttributeError("Missing arg '%s' for '%s'" % (req, path))
 
         # check if body content is required
         if call.get("body", False) and body is None:
@@ -160,12 +156,65 @@ class BaseAPI(object):
                 
         # we allow only, body or args, bbut not both
         if args and body:
-            raise AttributeError("Unused keys found,", repr(args))
-        
+            raise AttributeError("Unused keys found %s", repr(args))
+            
+        # check if we should override uri security
+        secure = call.get("secure", [])
+        if not type(secure) in (list, tuple,):
+            secure = [secure]
+
         # invoke
         return verb(client,
-                    auth, endpoint, flavor, compress,
+                    auth, endpoint,
+                    call.get("flavor"), call.get("compress", cls.COMPRESS),
                     secure, body or args, callback)
 
         
+class BaseMapper(object):
+    """Sugar class to allow a more pythonic way to invoke REST Api"""
+
+    BASE_API = None
+    
+    def __init__(self, client, api, ignore=None):
+        self.__client = client
+        self.__api    = api
+        self.__ignore = ignore or []
+        
+    def __iter__(self):
+        self.__api.iterkeys()
+
+    def __setattr__(self, key, value):
+        if key[0] != '_':
+            raise AttributeError(key)
+        return object.__setattr__(self, key, value)
+            
+    def __getattr__(self, action):
+        
+        def invoke(*args, **kwargs):
+            """Invoke api"""
+            args     = list(args)
+            params   = kwargs
+            callback = params.pop("callback", None)
+            # If callback isn't passed as keyword argument, try to
+            # fetch from args
+            if not callback and args and callable(args[-1]):
+                callback = args.pop(-1)
+            for req in self.__api[action].get("required", ()):
+                if args and req not in params:
+                    params.setdefault(req, args.pop(0))
+
+            assert len(args) <= 1
+            body = args[0] if args else None
+
+            return self.BASE_API.invoke(
+                self.__client, self.__api[action], body, params, callback)
+            
+        # validate
+        if action not in self.__api:
+            raise AttributeError("Missing action '%s'" % action)
+        if action in self.__ignore:
+            raise AttributeError("Invalid API call '%s'" % action)
+        return invoke
+            
+                    
 
