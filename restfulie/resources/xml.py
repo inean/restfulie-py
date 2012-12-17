@@ -67,12 +67,12 @@ class XMLResource(Resource):
         """
         links = []
         for element in self.element_tree.getiterator('link'):
-            link = Link({
-                    'href': element.attrib.get('href'),
-                    'rel':  element.attrib.get('rel'),
-                    'type': element.attrib.get('type') or 'application/xml',
-            })
-            links.append(link)
+            link_args = {
+                'href': element.attrib.get('href'),
+                'rel':  element.attrib.get('rel'),
+                'type': element.attrib.get('type') or 'application/xml',
+            }
+            links.append(Link(**link_args))
         return links
 
     def links(self):

@@ -14,7 +14,7 @@ def solve(current):
             link = current.link(direction)
             if not found and link and not visited.get(link.href):
                 visited[link.href] = True
-                link.follow().get(solve)
+                link.follow().get(callback=solve)
 
     else:
         IOLoop.instance().stop()
