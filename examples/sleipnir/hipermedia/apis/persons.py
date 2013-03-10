@@ -1,5 +1,3 @@
-
-#!/usr/bin/env python
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
@@ -8,15 +6,26 @@ persons
 
 from __future__ import absolute_import
 
-__author__   = "Carlos Martin <cmartin@liberalia.net>"
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import required modules
-from sleipnir.core.decorators import cached
 from restfulie.client import Extend
 
 # local submodule requirements
-from ..api import API, APIMapper
+from ..api import SleipnirMapper
+
+# Optional dependences
+try:
+    from sleipnir.core.decorators import cached
+except ImportError:
+    from functools import wraps
+
+    def cached(func):
+        @wraps(func)
+        def wrapper(*args, **kwds):
+            return func(*args, **kwds)
+        return wrapper
 
 
 class Sleipnir(object):
@@ -25,7 +34,7 @@ class Sleipnir(object):
     __metaclass__ = Extend
 
     PERSONS_API = {
-      "search" : {
+      "search": {
         "endpoint" : '/persons/search',
         "method"   : 'get',
         "auth"     : "sleipnir",
@@ -36,4 +45,4 @@ class Sleipnir(object):
     @property
     @cached
     def persons(self):
-        return APIMapper(self, self.PERSONS_API)
+        return SleipnirMapper(self, self.PERSONS_API)

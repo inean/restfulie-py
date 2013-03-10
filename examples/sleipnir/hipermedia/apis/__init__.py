@@ -1,9 +1,15 @@
+# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+
 """
 Set of convertes that returns a Resource class. Required by Restful
 implementation
 """
 
 from __future__ import absolute_import
+
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__license__ = "See LICENSE.restfulie for details"
+
 
 def __import(mod, names=None):
     """

@@ -1,5 +1,3 @@
-
-#!/usr/bin/env python
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
@@ -8,15 +6,26 @@ account
 
 from __future__ import absolute_import
 
-__author__   = "Carlos Martin <cmartin@liberalia.net>"
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import required modules
-from sleipnir.core.decorators import cached
 from restfulie.client import Extend
 
 # local submodule requirements
-from ..api import API, APIMapper
+from ..api import SleipnirMapper
+
+# Optional dependences
+try:
+    from sleipnir.core.decorators import cached
+except ImportError:
+    from functools import wraps
+
+    def cached(func):
+        @wraps(func)
+        def wrapper(*args, **kwds):
+            return func(*args, **kwds)
+        return wrapper
 
 
 class Sleipnir(object):
@@ -25,33 +34,33 @@ class Sleipnir(object):
     __metaclass__ = Extend
 
     ACCOUNTS_API = {
-        "me" : {
-            "endpoint" : '/account/me',
-            "method"   : 'get',
-            "auth"     : 'sleipnir',
+        "me": {
+            "endpoint": '/account/me',
+            "method"  : 'get',
+            "auth"    : 'sleipnir',
         },
-        "update" : {
-            "endpoint" : '/account/update',
-            "method"   : 'patch',
-            "flavor"   : 'application/json-patch',
-            "auth"     : 'sleipnir',
-            "body"     : True,
+        "update": {
+            "endpoint": '/account/update',
+            "method"  : 'patch',
+            "flavor"  : 'application/json-patch',
+            "auth"    : 'sleipnir',
+            "body"    : True,
         },
-        "update_avatar" : {
+        "update_avatar": {
             "endpoint": '/account/update/avatar',
-            "method"   : 'put',
-            "flavor"   : 'multipart',
-            "auth"     : 'sleipnir',
-            "compress" : True,
-            "required" : ['avatar'],
+            "method"  : 'put',
+            "flavor"  : 'multipart',
+            "auth"    : 'sleipnir',
+            "compress": True,
+            "required": ['avatar'],
         },
     }
 
     def me(self, callback):
-        return API.invoke(self, self.ACCOUNTS_API["me"], None, {}, callback)
+        return SleipnirMapper.BASE_API.invoke(
+            self, self.ACCOUNTS_API["me"], None, {}, callback)
 
     @property
     @cached
     def accounts(self):
-        return APIMapper(self, self.ACCOUNTS_API, ignore=["me"])
-    
+        return SleipnirMapper(self, self.ACCOUNTS_API, ignore=["me"])

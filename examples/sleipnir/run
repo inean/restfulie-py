@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 # absolute requirements (only because  we are on async mode)
 from tornado.ioloop import IOLoop
@@ -11,22 +11,21 @@ from restfulie import codes
 
 # API wrapper
 from hipermedia.api  import Sleipnir
-from hipermedia.apis import * # Extends Sleipnir
+from hipermedia.apis import *  # Extends Sleipnir
 
 # sugar
-from pprint import pprint
-
 import sys
 import signal
 import random
 import functools
 
+
 class Callbacks(object):
     """Set of callbacks"""
-    
+
     @staticmethod
     def _entropy(length):
-        return "".join(str(random.randint(0,9)) for _ in xrange(length))
+        return "".join(str(random.randint(0, 9)) for _ in xrange(length))
 
     @classmethod
     def on_me(cls, client, me):
@@ -40,7 +39,7 @@ class Callbacks(object):
         contacts = me.contacts
         contacts[0].value = cls._entropy(9)
         contacts[1].value = cls._entropy(9)
-        
+
         # Json style to access dict collections
         assert me.contacts['@service="telephone",@type="WORK"'] == me.contacts[0]
 
@@ -53,7 +52,7 @@ class Callbacks(object):
         # TODO:
         # allow hipermedia if any link is presented
         # if 'update_avatar' in response.links:
-        #     client(response).update_avatar(foo) o 
+        #     client(response).update_avatar(foo) o
         #     client(response).update_avatar.post(foo)
         #     with client(response) as flow:
         #         flow.update_avatar(foo)  o
@@ -67,20 +66,20 @@ class Callbacks(object):
     def on_update_avatar(response):
         assert codes.is2XX(response.code)
 
-        
+
 class Console(Sleipnir):
     """ Minimal credentials class"""
-    
+
     def on_credential_required(self, properties, credential):
         value = raw_input(str(credential).capitalize() + ': ').strip()
         properties[credential] = value
-        
+
     def on_pin_required(self, url):
         print 'Please authorize: ' + url
         verifier = raw_input('PIN: ').strip()
         return verifier
 
-        
+
 if __name__ == "__main__":
     # create client
     client = Console()
@@ -94,7 +93,7 @@ if __name__ == "__main__":
         conf.username = "usal"
         conf.password = "usal"
         #conf.ask_to(client.on_credential_required, ("username", "password"))
-        
+
         # Uncomment this to use OAuth 1.0a Out of Band mode
         #conf.oauth_callback         = "oob"
         #conf.oauth_callback_handler = client.on_pin_required
@@ -104,10 +103,10 @@ if __name__ == "__main__":
         #conf.token_secret           = "<your token secret here>"
 
     # Set keyboard iterryution
-    signal.signal(signal.SIGINT, lambda x,y: sys.exit(0))
-        
+    signal.signal(signal.SIGINT, lambda x, y: sys.exit(0))
+
     # Async auth call
-    client.me(callback=functools.partial(Callbacks.on_me, client));
+    client.me(callback=functools.partial(Callbacks.on_me, client))
 
     # Async call
     with closing(file("avatar.jpg")) as f:
