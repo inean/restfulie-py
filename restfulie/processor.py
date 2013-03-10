@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
@@ -7,8 +6,7 @@ processors
 
 from __future__ import absolute_import
 
-__author__ = "caelum - http://caelum.com.br"
-__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
@@ -20,7 +18,7 @@ __all__ = [
     'ExecuteRequestProcessor',
     'PayloadMarshallingProcessor',
     'RedirectProcessor',
-    ]
+]
 
 # Project requirements
 from tornado.httputil import url_concat
@@ -82,7 +80,8 @@ class AuthenticationAsyncProcessor(AuthenticationProcessor):
         method = AuthenticationProcessor.execute
         method, cred = method(self, callback, chain, request, env)
         self.backends[method].authorize(cred, request, env, callback)
-        
+
+
 class MetaAuth(type):
     """Auth Metaclass"""
 
@@ -122,10 +121,10 @@ class ExecuteRequestProcessor(RequestProcessor):
             method=request.verb,
             headers=request.headers,
             body=env.get("body"),
-            use_gzip = request.use_gzip,
-            progress_callback = request.progress_callback,
-            connect_timeout = request.connect_timeout,
-            request_timeout = request.request_timeout)
+            use_gzip=request.use_gzip,
+            progress_callback=request.progress_callback,
+            connect_timeout=request.connect_timeout,
+            request_timeout=request.request_timeout)
         return Response(response)
 
     @staticmethod
@@ -138,10 +137,10 @@ class ExecuteRequestProcessor(RequestProcessor):
             method=request.verb,
             headers=request.headers,
             body=env.get("body"),
-            use_gzip = request.use_gzip,
-            progress_callback = request.progress_callback,
-            connect_timeout = request.connect_timeout,
-            request_timeout = request.request_timeout)
+            use_gzip=request.use_gzip,
+            progress_callback=request.progress_callback,
+            connect_timeout=request.connect_timeout,
+            request_timeout=request.request_timeout)
         return response
 
     def execute(self, callback, chain, request, env):
@@ -201,7 +200,7 @@ tornado_chain = [
     AuthenticationSyncProcessor(),
 #   RedirectProcessor(),
     ExecuteRequestProcessor(),
-    ]
+]
 
 auth_chain = [
     PayloadMarshallingProcessor(),

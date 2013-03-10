@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
@@ -40,7 +39,7 @@ class Extend(type):
             setattr(prev, key, value)
         return prev
 
-        
+
 class ClientMeta(type):
     """
     Simple metaclass to make client subclasses discoverable by
@@ -51,7 +50,7 @@ class ClientMeta(type):
         assert name not in Extend.clients
         Extend.clients[name] = mcs
 
-            
+
 class Client(object):
     """Base class to implement a remote API"""
 
@@ -69,4 +68,3 @@ class Client(object):
     def credentials(self):
         """Get credentials element"""
         return self._config
-

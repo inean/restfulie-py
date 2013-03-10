@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
@@ -46,7 +45,11 @@ class BaseAPI(object):
     MUST be stateless
     """
 
-    API_BASE = None
+    # CLient contains required class information to access this
+    # api. We define this way so we could share server api with
+    # authentication classes
+    CLIENT   = None
+
     FLAVORS  = None
     CHAIN    = None
     COMPRESS = False
@@ -54,8 +57,8 @@ class BaseAPI(object):
     # Timeouts
     CONNECT_TIMEOUT = None
     REQUEST_TIMEOUT = None
-    
-    
+
+
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _get(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
@@ -67,7 +70,7 @@ class BaseAPI(object):
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .get(callback=callback, params=args)
 
-    #pylint: disable-msg=C0301, R0913, W0142        
+    #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _post(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
         """Implementation of verb POST"""
@@ -82,7 +85,7 @@ class BaseAPI(object):
             .auth(client.credentials, method=auth)                      \
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .post(args, callback=callback)
-        
+
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _put(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
@@ -98,7 +101,7 @@ class BaseAPI(object):
             .auth(client.credentials, method=auth)                      \
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .put(args, callback=callback)
-        
+
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def _patch(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
@@ -109,7 +112,7 @@ class BaseAPI(object):
         # array if args is defined as a length 1 dict with None as key
         # See also:
         # https://datatracker.ietf.org/doc/draft-ietf-appsawg-json-patch/
-            
+
         return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
             .secure(*secure)                                            \
             .as_(flavor)                                                \
@@ -128,14 +131,14 @@ class BaseAPI(object):
             .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
             .get(callback=callback, params=args)
 
-    #pylint: disable-msg=C0301, R0913, W0142        
+    #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
     def invoke(cls, client, call, body, args, callback=None):
         """Invoke method"""
 
         # check that requirements are passed
         path = call["endpoint"]
-        
+
         # parse requirements
         for req in ifilter(lambda x: x not in args, call.get("required", ())):
             raise AttributeError("Missing arg '%s' for '%s'" % (req, path))
@@ -143,21 +146,24 @@ class BaseAPI(object):
         # check if body content is required
         if call.get("body", False) and body is None:
             raise AttributeError("Missing body content")
-            
+
         # build endpoint
-        uri      = path % args
+        endpoint = path % args
         auth     = call.get("auth")
         verb     = getattr(cls, "_" + call["method"])
-        endpoint = uri if uri.startswith('http') else cls.API_BASE + uri
+        if not endpoint.startswith('http'):
+            # only absolute paths are allowed
+            assert endpoint[0] == '/' and cls.CLIENT
+            endpoint = cls.CLIENT.API_SERVER_URL + endpoint
 
         # remove used args
         func = lambda x: '%%(%s)' % x[0] not in path
         args = dict(ifilter(func, args.iteritems()))
-                
+
         # we allow only, body or args, bbut not both
         if args and body:
             raise AttributeError("Unused keys found %s", repr(args))
-            
+
         # check if we should override uri security
         secure = call.get("secure", [])
         if not type(secure) in (list, tuple,):
@@ -169,17 +175,17 @@ class BaseAPI(object):
                     call.get("flavor"), call.get("compress", cls.COMPRESS),
                     secure, body or args, callback)
 
-        
+
 class BaseMapper(object):
     """Sugar class to allow a more pythonic way to invoke REST Api"""
 
-    BASE_API = None
-    
+    API = None
+
     def __init__(self, client, api, ignore=None):
         self.__client = client
         self.__api    = api
         self.__ignore = ignore or []
-        
+
     def __iter__(self):
         self.__api.iterkeys()
 
@@ -187,9 +193,9 @@ class BaseMapper(object):
         if key[0] != '_':
             raise AttributeError(key)
         return object.__setattr__(self, key, value)
-            
+
     def __getattr__(self, action):
-        
+
         def invoke(*args, **kwargs):
             """Invoke api"""
             args     = list(args)
@@ -206,15 +212,12 @@ class BaseMapper(object):
             assert len(args) <= 1
             body = args[0] if args else None
 
-            return self.BASE_API.invoke(
+            return self.API.invoke(
                 self.__client, self.__api[action], body, params, callback)
-            
+
         # validate
         if action not in self.__api:
             raise AttributeError("Missing action '%s'" % action)
         if action in self.__ignore:
             raise AttributeError("Invalid API call '%s'" % action)
         return invoke
-            
-                    
-

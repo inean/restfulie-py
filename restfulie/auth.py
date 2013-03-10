@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- mode:python; tab-width: 2; coding: utf-8 -*-
 
 """
@@ -59,22 +58,27 @@ class BasicAuth(AuthMixin):
 class OAuthMixin(AuthMixin):
     """ oauth method """
 
+    # Decide wich class will be using this api. Base Url will be
+    # fetched from them
+    CLIENT = None
+
+    # Auth mechanism implementd
     implements = "oauth"
-    
+
     @property
     def request_url(self):
         """Get request_token url according to OAuth 1.0 specs"""
-        raise NotImplementedError
+        return "{0}/request_token".format(self.CLIENT.OAUTH_SERVER_URL)
 
     @property
     def access_url(self):
         """Get access_token url according to OAuth 1.0 specs"""
-        raise NotImplementedError
+        return "{0}/access_token".format(self.CLIENT.OAUTH_SERVER_URL)
 
     @property
     def authorize_url(self):
         """Get authorize url according to OAuth 1.0 specs"""
-        raise NotImplementedError
+        return "{0}/authorize".format(self.CLIENT.OAUTH_SERVER_URL)
 
     @property
     #pylint: disable-msg=W0201
@@ -130,7 +134,7 @@ class OAuthMixin(AuthMixin):
     def _get_request(self, consumer, token, uri, **kwargs):
         """Prepare an oauth request based on arguments"""
         request = Request.from_consumer_and_token(
-            consumer, token, 
+            consumer, token,
             http_url=uri,
             http_method=kwargs.get("method", HTTP_METHOD),
             parameters=kwargs.get("params"),
@@ -176,7 +180,7 @@ class OAuthMixin(AuthMixin):
             method=method,
             params=credentials.to_dict("oauth_callback")
         )
-        
+
     ###
     # OAuth authorization methods
     #
@@ -214,7 +218,7 @@ class OAuthMixin(AuthMixin):
             method=method,
             params=credentials.to_dict('oauth_session_handle')
         )
-        
+
     def renew_token_sync(self, credentials, method="POST"):
         """
         Renew an already used token syncronously
@@ -296,16 +300,16 @@ class OAuthMixin(AuthMixin):
 
     ###
     # OAuth sign
-    # 
+    #
     def sign(self, credentials, request, env):
         """Sign request"""
-        
+
         #pylint: disable-msg=C0103
         POST_CONTENT_TYPE = 'application/x-www-form-urlencoded'
 
         consumer = self._get_consumer(credentials)
         token    = self._get_token(credentials)
-        
+
         if not consumer or not token:
             raise AuthError("Missing oauth tokens")
 
@@ -313,7 +317,7 @@ class OAuthMixin(AuthMixin):
         headers  = request.headers
         if request.verb == "POST":
             assert 'content-type' in headers
-            
+
         # Only hash body and generate oauth_hash for body if
         # Content-Type != form-urlencoded
         isform = headers.get('content-type') == POST_CONTENT_TYPE
@@ -425,7 +429,7 @@ class OAuthMixin(AuthMixin):
         # fetch token or response from server
         response = response or credentials.store(self.implements)['token']
         callback(response)
-        
+
     def authorize_sync(self, credentials, request, env):
         try:
             self.sign(credentials, request, env)
@@ -434,4 +438,3 @@ class OAuthMixin(AuthMixin):
             token = self._authenticate_sync(credentials)
             self._update_credentials(credentials, token)
             self.sign(credentials, request, env)
-
