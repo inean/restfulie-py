@@ -1,23 +1,24 @@
-#!/usr/bin/python
-#-*- coding: utf-8 -*-
+#!/usr/bin/env python
+#-*- mode: python; coding: utf-8 -*-
 
 from setuptools import setup, find_packages
 
 setup(name="sleipnir-restfulie",
-      version="0.17",
-      description="Writing hypermedia aware resource based clients and servers",
+      version="0.18",
+      description="Write hypermedia aware resource based clients and servers",
       author="Carlos Martín",
       author_email="inean.es@gmail.com",
       url="http://restfulie.caelumobjects.com/",
       download_url="https://github.com/inean/restfulie-py",
-      packages=find_packages(),      
+      packages=find_packages(),
       license="Apache 2.0",
       keywords="rest, async, tornado, http, hypermedia",
       zip_safe=False,
-      install_requires= [
-          "oauth2   >= 1.5",
-          "tornado  >= 2.3.0",
-          "hal-json >= 0.1",
+      install_requires=[
+          "oauth2    >= 1.5",
+          "tornado   >= 2.3.0",
+          "hal-json  >= 0.1",
+          "jsonpatch >= 0.12",
       ],
       long_description="""
       CRUD through HTTP is a good step forward to using resources
@@ -35,6 +36,4 @@ setup(name="sleipnir-restfulie",
           "Operating System :: POSIX",
           "Programming Language :: Python",
       ],
-  )
-
-
+      )
