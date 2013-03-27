@@ -26,8 +26,12 @@ from restfulie.processor import auth_chain
 class Sleipnir(Client):
     """Base client class for Sleipnir API"""
 
-    API_SERVER_URL   = "http://api.sleipnir-project.com/1"
-    OAUTH_SERVER_URL = "https://api.sleipnir-project.com/oauth"
+    # When scaling, it's probably a good idea to split oauth and api
+    # servers
+    URLS = {
+        'apiv1':  "http://api.sleipnir-project.com/1",
+        'oauth': "https://api.sleipnir-project.com/oauth",
+    }
 
     @classmethod
     def override_server(cls, url, override_api=True, override_oauth=True):
@@ -43,10 +47,10 @@ class Sleipnir(Client):
         # Override class urls
         if override_api:
             url['path'] = "/1"
-            cls.API_SERVER_URL = urlparse.urlunparse(url)
+            cls.URLS['apiv1'] = urlparse.urlunparse(url)
         if override_oauth:
             url['path'] = "/oauth"
-            cls.OAUTH_SERVER_URL = urlparse.urlunparse(url)
+            cls.URLS['oauth'] = urlparse.urlunparse(url)
 
 
 #pylint: disable-msg=W0223
@@ -71,6 +75,9 @@ class SleipnirMapper(BaseMapper):
         # fetched from them
         CLIENT  = Sleipnir
 
+        # Base Url
+        TARGET  = "apiv1"
+
         # Our api is json based only
         FLAVORS = ["json"]
 
@@ -81,6 +88,8 @@ class SleipnirMapper(BaseMapper):
     class SleipnirAuthAPI(SleipnirAPI):
         CHAIN = auth_chain
 
+        # Override Target to focus on oauth ones
+        TARGET = "oauth"
 
     # Register defined classes
     BASE_API = SleipnirAPI

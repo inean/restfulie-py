@@ -62,23 +62,27 @@ class OAuthMixin(AuthMixin):
     # fetched from them
     CLIENT = None
 
+    # From Client set of urls, determine which one is preferred to use
+    # with this auth method
+    TARGET = "oauth"
+
     # Auth mechanism implementd
     implements = "oauth"
 
     @property
     def request_url(self):
         """Get request_token url according to OAuth 1.0 specs"""
-        return "{0}/request_token".format(self.CLIENT.OAUTH_SERVER_URL)
+        return "{0}/request_token".format(self.CLIENT.URLS[self.TARGET])
 
     @property
     def access_url(self):
         """Get access_token url according to OAuth 1.0 specs"""
-        return "{0}/access_token".format(self.CLIENT.OAUTH_SERVER_URL)
+        return "{0}/access_token".format(self.CLIENT.URLS[self.TARGET])
 
     @property
     def authorize_url(self):
         """Get authorize url according to OAuth 1.0 specs"""
-        return "{0}/authorize".format(self.CLIENT.OAUTH_SERVER_URL)
+        return "{0}/authorize".format(self.CLIENT.URLS[self.TARGET])
 
     @property
     #pylint: disable-msg=W0201
