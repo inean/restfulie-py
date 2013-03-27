@@ -1,4 +1,4 @@
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
 Set of convertes that returns a Resource class. Required by Restful

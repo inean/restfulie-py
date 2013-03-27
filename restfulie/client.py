@@ -6,7 +6,7 @@ client
 
 from __future__ import absolute_import
 
-__author__   = "Carlos Martin <cmartin@liberalia.net>"
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.

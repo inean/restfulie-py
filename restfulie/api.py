@@ -137,7 +137,7 @@ class BaseAPI(object):
         """Invoke method"""
 
         # check that requirements are passed
-        path = call["endpoint"]
+        path = call.get("endpoint", "/")
 
         # parse requirements
         for req in ifilter(lambda x: x not in args, call.get("required", ())):
@@ -153,8 +153,8 @@ class BaseAPI(object):
         verb     = getattr(cls, "_" + call["method"])
         if not endpoint.startswith('http'):
             # only absolute paths are allowed
-            assert endpoint[0] == '/' and cls.CLIENT
-            endpoint = cls.CLIENT.API_SERVER_URL + endpoint
+            assert endpoint[0] == '/' and cls.TARGET and cls.CLIENT
+            endpoint = cls.CLIENT.URLS[cls.TARGET] + endpoint
 
         # remove used args
         func = lambda x: '%%(%s)' % x[0] not in path
