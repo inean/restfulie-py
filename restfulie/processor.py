@@ -67,6 +67,7 @@ class AuthenticationSyncProcessor(AuthenticationProcessor):
     def execute(self, callback, chain, request, env):
         method = AuthenticationProcessor.execute
         method, cred = method(self, callback, chain, request, env)
+        # pylint: disable-msg=W0106
         method and self.backends[method].authorize_sync(cred, request, env)
         # follow if no method used
         return chain.follow(callback, request, env)
@@ -85,11 +86,11 @@ class AuthenticationAsyncProcessor(AuthenticationProcessor):
 class MetaAuth(type):
     """Auth Metaclass"""
 
-    def __init__(mcs, name, bases, dct):
-        type.__init__(mcs, name, bases, dct)
+    def __init__(cls, name, bases, dct):
+        type.__init__(cls, name, bases, dct)
         if name.endswith("Auth"):
-            implements = mcs.implements
-            AuthenticationProcessor.backends[implements] = mcs()
+            implements = cls.implements
+            AuthenticationProcessor.backends[implements] = cls()
 
 
 #pylint: disable-msg=R0921
@@ -122,6 +123,7 @@ class ExecuteRequestProcessor(RequestProcessor):
             headers=request.headers,
             body=env.get("body"),
             use_gzip=request.use_gzip,
+            ca_certs=request.ca_certs,
             progress_callback=request.progress_callback,
             connect_timeout=request.connect_timeout,
             request_timeout=request.request_timeout)
@@ -138,6 +140,7 @@ class ExecuteRequestProcessor(RequestProcessor):
             headers=request.headers,
             body=env.get("body"),
             use_gzip=request.use_gzip,
+            ca_certs=request.ca_certs,
             progress_callback=request.progress_callback,
             connect_timeout=request.connect_timeout,
             request_timeout=request.request_timeout)

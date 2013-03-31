@@ -10,7 +10,7 @@ __author__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
-from itertools import ifilter
+from itertools import ifilter, imap
 
 __all__ = ['BaseAPI', 'BaseMapper']
 
@@ -38,7 +38,8 @@ from .restfulie import Restfulie
 # ------
 # DELETE.
 
-#pylint: disable-msg=R0903
+
+# pylint: disable-msg=R0903
 class BaseAPI(object):
     """
     Derive from here Custom API Implementations. All implementations
@@ -49,62 +50,89 @@ class BaseAPI(object):
     # api. We define this way so we could share server api with
     # authentication classes
     CLIENT   = None
+    # Which Urls from Client's URLS class attribute should be used
+    # when computing invoke endpoint
+    TARGET   = None
+    URLS     = {}  # Fallback when Client.URLS is not defined
 
+    # Rest smells
     FLAVORS  = None
     CHAIN    = None
+    CACERTS  = None  # Fallback when CLIENT.CACERT is not defined
     COMPRESS = False
 
     # Timeouts
     CONNECT_TIMEOUT = None
     REQUEST_TIMEOUT = None
 
+    @classmethod
+    def __create(cls, endpoint):
+        """Build REST request with safe defaults"""
+
+        return Restfulie.at(
+            uri=endpoint,
+            flavors=cls.FLAVORS,
+            chain=cls.CHAIN,
+            compress=cls.COMPRESS,
+            ca_certs=getattr(cls.CLIENT, "CACERTS", cls.CACERTS),
+            connect_timeout=cls.CONNECT_TIMEOUT,
+            request_timeout=cls.REQUEST_TIMEOUT
+        )
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
-    def _get(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
+    def _get(cls, client, auth, endpoint, flavor, compress,
+             secure, timeout, args, callback):
         """Implementation of verb GET"""
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
-            .secure(*secure)                                            \
-            .auth(client.credentials, method=auth)                      \
-            .accepts(flavor)                                            \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
+
+        return cls.__create(endpoint)                 \
+            .secure(*secure)                          \
+            .auth(client.credentials, method=auth)    \
+            .accepts(flavor)                          \
+            .until(*timeout)                          \
+            .compress(compress)                       \
             .get(callback=callback, params=args)
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
-    def _post(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
+    def _post(cls, client, auth, endpoint, flavor, compress,
+              secure, timeout, args, callback):
         """Implementation of verb POST"""
 
         #default to form-urlencode. If somthing that smells like a
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
-            .secure(*secure)                                            \
-            .as_(flavor)                                                \
-            .auth(client.credentials, method=auth)                      \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
+        return cls.__create(endpoint)                 \
+            .secure(*secure)                          \
+            .as_(flavor)                              \
+            .auth(client.credentials, method=auth)    \
+            .until(*timeout)                          \
+            .compress(compress)                       \
             .post(args, callback=callback)
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
-    def _put(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
+    def _put(cls, client, auth, endpoint, flavor, compress,
+             secure, timeout, args, callback):
         """Implementation of verb PUT"""
 
         #default to form-urlencode. If somthing that smells like a
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
-            .secure(*secure)                                            \
-            .as_(flavor)                                                \
-            .auth(client.credentials, method=auth)                      \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
+        return cls.__create(endpoint)                 \
+            .secure(*secure)                          \
+            .as_(flavor)                              \
+            .auth(client.credentials, method=auth)    \
+            .until(*timeout)                          \
+            .compress(compress)                       \
             .put(args, callback=callback)
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
-    def _patch(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
+    def _patch(cls, client, auth, endpoint, flavor, compress,
+               secure, timeout, args, callback):
         """Implementation of verb PATCH"""
 
         # JSON path expexts an array of objects. Internally, We need
@@ -113,22 +141,26 @@ class BaseAPI(object):
         # See also:
         # https://datatracker.ietf.org/doc/draft-ietf-appsawg-json-patch/
 
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
-            .secure(*secure)                                            \
-            .as_(flavor)                                                \
-            .auth(client.credentials, method=auth)                      \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
+        return cls.__create(endpoint)                 \
+            .secure(*secure)                          \
+            .as_(flavor)                              \
+            .auth(client.credentials, method=auth)    \
+            .until(*timeout)                          \
+            .compress(compress)                       \
             .patch(args, callback=callback)
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
-    def _delete(cls, client, auth, endpoint, flavor, compress, secure, args, callback):
+    def _delete(cls, client, auth, endpoint, flavor, compress,
+                secure, timeout, args, callback):
         """Implementation of verb DELETE"""
-        return Restfulie.at(endpoint, cls.FLAVORS, cls.CHAIN, compress) \
-            .secure(*secure)                                            \
-            .auth(client.credentials, method=auth)                      \
-            .accepts(flavor)                                            \
-            .until(cls.REQUEST_TIMEOUT, cls.CONNECT_TIMEOUT)            \
+
+        return cls.__create(endpoint)                 \
+            .secure(*secure)                          \
+            .auth(client.credentials, method=auth)    \
+            .accepts(flavor)                          \
+            .until(*timeout)                          \
+            .compress(compress)                       \
             .get(callback=callback, params=args)
 
     #pylint: disable-msg=C0301, R0913, W0142
@@ -136,25 +168,32 @@ class BaseAPI(object):
     def invoke(cls, client, call, body, args, callback=None):
         """Invoke method"""
 
-        # check that requirements are passed
-        path = call.get("endpoint", "/")
+        def _endpoint(endpoint):
+            """Compute endpoint if a relative one is pushed"""
+            if not endpoint.startswith('http'):
+                # only absolute paths are allowed
+                assert endpoint[0] == '/' and cls.TARGET and cls.CLIENT
+                endpoint = getattr(cls.CLIENT, "URLS", cls.URLS).get(cls.TARGET, "/") + endpoint
+            return endpoint
+
+        def _peek(value, target, *composition):
+            """Peek a collection of values"""
+            retval = value.get(target, [])
+            if isinstance(retval, dict):
+                retval = list(imap(retval.get, composition))
+            if not type(retval) in (list, tuple,):
+                retval = [retval]
+            return retval
 
         # parse requirements
         for req in ifilter(lambda x: x not in args, call.get("required", ())):
-            raise AttributeError("Missing arg '%s' for '%s'" % (req, path))
+            raise AttributeError(
+                "Missing args '%s' for '%s' call" % (req, call)
+            )
 
-        # check if body content is required
-        if call.get("body", False) and body is None:
-            raise AttributeError("Missing body content")
-
-        # build endpoint
+        # substitute endpoint args
+        path = call.get("endpoint", "/")
         endpoint = path % args
-        auth     = call.get("auth")
-        verb     = getattr(cls, "_" + call["method"])
-        if not endpoint.startswith('http'):
-            # only absolute paths are allowed
-            assert endpoint[0] == '/' and cls.TARGET and cls.CLIENT
-            endpoint = cls.CLIENT.URLS[cls.TARGET] + endpoint
 
         # remove used args
         func = lambda x: '%%(%s)' % x[0] not in path
@@ -162,18 +201,27 @@ class BaseAPI(object):
 
         # we allow only, body or args, bbut not both
         if args and body:
-            raise AttributeError("Unused keys found %s", repr(args))
+            raise AttributeError(
+                "Args provided on a call with content. Unable to determine "
+                "which one should be used. Body:'' Args:'%s'", body, repr(args)
+            )
 
-        # check if we should override uri security
-        secure = call.get("secure", [])
-        if not type(secure) in (list, tuple,):
-            secure = [secure]
+        # check if body content is required
+        if call.get("body", False) and body is None:
+            raise AttributeError("Missing body content")
 
-        # invoke
-        return verb(client,
-                    auth, endpoint,
-                    call.get("flavor"), call.get("compress", cls.COMPRESS),
-                    secure, body or args, callback)
+        # invoke!!
+        return getattr(cls, "_" + call["method"])(
+            client=client,
+            auth=call.get("auth"),
+            endpoint=_endpoint(endpoint),
+            flavor=call.get("flavor"),
+            compress=call.get("compress"),
+            secure=_peek(call, "secure", "value", "port", "ca_certs"),
+            timeout=_peek(call, "timeout", "connect_timeout", "request_timeout"),
+            args=body or args,
+            callback=callback
+        )
 
 
 class BaseMapper(object):

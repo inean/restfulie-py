@@ -1,21 +1,20 @@
-#!/usr/bin/env python
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
-configuration
+Configuration
 """
 
 from __future__ import absolute_import
 
-__author__ = "caelum - http://caelum.com.br"
-__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 import re
+import itertools
 
-_SCHEME_RE = re.compile(r'(http.?://)?(?P<url>/.*)')
-_PORT_RE   = re.compile(r'(?P<host>[^:/ ]+)(:[0-9]*)?(?P<url>/.*)')
+_SCHEME_RE = re.compile(r'(http.?://)?(?P<url>.*)')
+_PORT_RE   = re.compile(r'(?P<host>[^:/ ]+)(:[0-9]*)?(?P<url>.*)')
 
 __all__ = ['Configuration']
 
@@ -27,6 +26,7 @@ from .processor import tornado_chain
 from .request import Request
 
 
+# pylint: disable-msg=R0902, R0913
 class Configuration(object):
     """Configuration object for requests at a given URI"""
 
@@ -39,7 +39,7 @@ class Configuration(object):
         'post',
         'put',
         'trace'
-        ]
+    ]
 
     FLAVORS = {
         'json': {
@@ -66,22 +66,29 @@ class Configuration(object):
 
     # Default tornado timeout
     TIMEOUT = 20
-    
-    def __init__(self, uri, flavors=None, chain=None, compress=False):
+
+    def __init__(self, uri, flavors=None, chain=None, compress=False,
+                 ca_certs=None, connect_timeout=None, request_timeout=None):
         """Initialize the configuration for requests at the given URI"""
-        self.uri             = uri
-        self.headers         = HTTPHeaders()
-        self.flavors         = flavors or ['json', 'xml']
-        self.processors      = chain or tornado_chain
-        self.credentials     = {}
-        self.verb            = None
-        self.use_gzip        = compress
+        self.uri         = uri
+        self.headers     = HTTPHeaders()
+        self.flavors     = flavors or ['json', 'xml']
+        self.processors  = chain or tornado_chain
+        self.credentials = {}
+        self.verb        = None
+        self.use_gzip    = compress
+        self.ca_certs    = ca_certs
 
         # Request extra arguments
         self.progress_callback = None
-        self.request_timeout   = self.TIMEOUT
-        self.connect_timeout   = self.TIMEOUT
-        
+        self.connect_timeout   = connect_timeout or self.TIMEOUT
+        self.request_timeout   = request_timeout or self.TIMEOUT
+
+    def __iter__(self):
+        """Iterate over properties"""
+        prop_filter = lambda x: x[0][0] != '_'
+        return itertools.ifilter(prop_filter, self.__dict__.iteritems())
+
     def __getattr__(self, value):
         """
         Perform an HTTP request. This method supports calls to the following
@@ -103,9 +110,10 @@ class Configuration(object):
                     self.headers.add('accept', self.FLAVORS[flavor]['accept'])
 
         # set form type and default if noone is present
-        if 'content-type' not in self.headers and self.verb in ('POST', 'PUT', 'PATCH'):
+        verb_allowed = self.verb in ('POST', 'PUT', 'PATCH')
+        if verb_allowed and 'content-type' not in self.headers:
             self.headers['content-type'] = self.FLAVORS['form']['content-type']
-            
+
         return Request(self)
 
     def use(self, feature):
@@ -113,18 +121,20 @@ class Configuration(object):
         self.processors.insert(0, feature)
         return self
 
-    def secure(self, value=None, port=None):
+    def secure(self, value=None, port=None, ca_certs=None):
         """Force connection using https protocol at port specified"""
         if isinstance(value, bool):
-            scheme    = 'http' if not value else 'https'
-            self.uri  = _SCHEME_RE.sub(scheme + "://\g<url>", self.uri)
+            scheme = 'http' if not value else 'https'
+            self.uri = _SCHEME_RE.sub(scheme + r"://\g<url>", self.uri)
         if isinstance(port, int):
-            self.uri = _PORT_RE.sub("\g<host>:" + port + "\g<url>", self.uri)
+            self.uri = _PORT_RE.sub(r"\g<host>:" + port + r"\g<url>", self.uri)
+        if isinstance(ca_certs, basestring):
+            self.ca_certs = ca_certs
         return self
-        
-    def compress(self):
+
+    def compress(self, compress=True):
         """Notify server that we will be zipping request"""
-        self.use_gzip = True
+        self.use_gzip = compress
         return self
 
     def progress(self, progress_callback):
@@ -135,8 +145,8 @@ class Configuration(object):
         """
         self.progress_callback = progress_callback
         return self
-        
-    def until(self, request_timeout=None, connect_timeout=None):
+
+    def until(self, connect_timeout=None, request_timeout=None):
         """Set current timeout in seconds for every call"""
         self.connect_timeout = connect_timeout or self.connect_timeout
         self.request_timeout = request_timeout or self.request_timeout
@@ -170,5 +180,5 @@ class Configuration(object):
         expr = "%s.*" if path.endswith('*') else "%s$"
         rmatch = re.compile(expr % path.rsplit('*', 1)[0])
         # now store it
-        self.credentials[path]=(rmatch, method, credentials,)
+        self.credentials[path] = (rmatch, method, credentials,)
         return self

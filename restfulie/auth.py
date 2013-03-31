@@ -1,4 +1,4 @@
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
 processors
@@ -6,8 +6,7 @@ processors
 
 from __future__ import absolute_import
 
-__author__ = "caelum - http://caelum.com.br"
-__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__  = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
@@ -21,7 +20,8 @@ from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPError
 __all__ = []
 
 # Project requirements
-from oauth2 import Request, Consumer, Token, SignatureMethod_HMAC_SHA1, HTTP_METHOD
+from oauth2 import Request, Consumer, Token
+from oauth2 import SignatureMethod_HMAC_SHA1, HTTP_METHOD
 
 try:
     from urlparse import parse_qs
@@ -33,18 +33,21 @@ except ImportError:
 # local submodule requirements
 from .processor import AuthMixin
 
+
 class AuthError(Exception):
     """Auth exception"""
+
 
 class HandShakeError(Exception):
     """Error on auth process"""
 
-#pylint: disable-msg=R0903
+
 class BasicAuth(AuthMixin):
     """Processor responsible for making HTTP simple auth"""
 
     implements = "plain"
 
+    # pylint: disable-msg=W0106
     def authorize(self, credentials, request, env, callback):
         self.authorize_sync(credentials, request, env)
         callable(callback) and callback()
@@ -55,6 +58,7 @@ class BasicAuth(AuthMixin):
         request.headers['authorization'] = 'Basic %s' % encode
 
 
+# pylint: disable-msg=R0921
 class OAuthMixin(AuthMixin):
     """ oauth method """
 
@@ -95,31 +99,44 @@ class OAuthMixin(AuthMixin):
     ##
     # Fetch methods (HTTP/HTTPS)
     #
-    def _fetch(self, consumer, token, uri, callback, **kwargs):
+    def _fetch(self, consumer, token, http_request, **kwargs):
         """Send request async"""
         def on_response(response):
+            """Response callback handler"""
             if hasattr(response, 'error') and response.error:
                 raise HandShakeError(response.error)
+            callback = http_request['callback']
             return callback(Token.from_string(response.buffer.read()))
 
         # process
+        uri = http_request['uri']
         request = self._get_request(consumer, token, uri, **kwargs)
         AsyncHTTPClient().fetch(
             uri,
             method=request.method,
             body=kwargs.get("body", ''),
             headers=request.to_header(),
+            use_gzip=http_request.get('use_gzip'),
+            ca_certs=http_request.get('ca_certs'),
+            connect_timeout=http_request.get('connect_timeout'),
+            request_timeout=http_request.get('request_timeout'),
             callback=on_response
         )
 
-    def _fetch_sync(self, consumer, token, uri, **kwargs):
+    def _fetch_sync(self, consumer, token, http_request, **kwargs):
         """Send request sync"""
+        uri      = http_request['uri']
         request  = self._get_request(consumer, token, uri, **kwargs)
         response = HTTPClient().fetch(
             uri,
             method=request.method,
             body=kwargs.get("body", ''),
-            headers=request.to_header())
+            headers=request.to_header(),
+            use_gzip=http_request.get('use_gzip'),
+            ca_certs=http_request.get('ca_certs'),
+            connect_timeout=http_request.get('connect_timeout'),
+            request_timeout=http_request.get('request_timeout'),
+        )
         return Token.from_string(response.buffer.read())
 
     ##
@@ -143,11 +160,12 @@ class OAuthMixin(AuthMixin):
             http_method=kwargs.get("method", HTTP_METHOD),
             parameters=kwargs.get("params"),
             body=kwargs.get("body", ''),
-            is_form_encoded = bool(kwargs.get("body", False)),
+            is_form_encoded=bool(kwargs.get("body", False)),
         )
         request.sign_request(self.method, consumer, token)
         return request
 
+    # pylint: disable-msg=W0142
     def _get_consumer(self, credentials):
         """Prepare and store consumer based on oauth arguments"""
         if 'consumer' not in credentials.store(self.implements):
@@ -156,6 +174,7 @@ class OAuthMixin(AuthMixin):
             credentials.store(self.implements)['consumer'] = Consumer(*creds)
         return credentials.store(self.implements)['consumer']
 
+    # pylint: disable-msg=W0142
     def _get_token(self, credentials):
         """Prepare and store a token based on credentials"""
         if 'token' not in credentials.store(self.implements):
@@ -167,20 +186,32 @@ class OAuthMixin(AuthMixin):
     ##
     # OAuth Public token adquisition methods
     #
-    def request_token(self, credentials, callback, method="POST"):
+    def request_token(self, credentials, http_request, callback, method="POST"):
         """Implements first stage on OAuth  dance async"""
+
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.request_url, callback=callback)
+        # invoke
         self._fetch(
             self._get_consumer(credentials),
-            None, self.request_url, callback,
+            None,
+            http_request,
             method=method,
             params=credentials.to_dict("oauth_callback")
         )
 
-    def request_token_sync(self, credentials, method="POST"):
+    def request_token_sync(self, credentials, http_request, method="POST"):
         """Implements first stage on OAuth dance sync"""
+
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.request_url)
+        # invoke
         return self._fetch_sync(
             self._get_consumer(credentials),
-            None, self.request_url,
+            None,
+            http_request,
             method=method,
             params=credentials.to_dict("oauth_callback")
         )
@@ -207,7 +238,7 @@ class OAuthMixin(AuthMixin):
     ##
     # OAuth access methods
     #
-    def renew_token(self, credentials, callback, method="POST"):
+    def renew_token(self, credentials, http_request, callback, method="POST"):
         """
         Renew an already used token
         """
@@ -215,15 +246,19 @@ class OAuthMixin(AuthMixin):
         if not credentials.oauth_session_handle:
             raise HandShakeError("token_not_renewable")
 
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.access_url, callback=callback)
+        # invoke
         self._fetch(
             self._get_consumer(credentials),
             self._get_token(credentials),
-            self.access_url, callback,
+            http_request,
             method=method,
             params=credentials.to_dict('oauth_session_handle')
         )
 
-    def renew_token_sync(self, credentials, method="POST"):
+    def renew_token_sync(self, credentials, http_request, method="POST"):
         """
         Renew an already used token syncronously
         """
@@ -231,42 +266,61 @@ class OAuthMixin(AuthMixin):
         if not credentials.oauth_session_handle:
             raise HandShakeError("token_not_renewable")
 
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.access_url)
+
         return self._fetch_sync(
             self._get_consumer(credentials),
             self._get_token(credentials),
-            self.access_url,
+            http_request,
             method=method,
             params=credentials.to_dict('oauth_session_handle')
         )
 
-    def access_token(self, credentials, token, verifier, callback, method="POST"):
+    # pylint: disable-msg=R0913
+    def access_token(self, credentials, token, verifier,
+                     http_request, callback, method="POST"):
         """
         After user has authorized the request token, get access token
         with user supplied verifier
         """
+
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.access_url, callback=callback)
+        # invoke
         self._fetch(
             self._get_consumer(credentials),
-            token, self.access_url, callback,
+            token,
+            http_request,
             method=method,
-            params={'oauth_verifier' : verifier},
+            params={'oauth_verifier': verifier},
         )
 
-    def access_token_sync(self, credentials, token, verifier, method="POST"):
+    # pylint: disable-msg=R0913
+    def access_token_sync(self, credentials, token, verifier,
+                          http_request, method="POST"):
         """
         After user has authorized the request token, get access token
         with user supplied verifier
         """
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.access_url)
+        # invoke
         return self._fetch_sync(
             self._get_consumer(credentials),
-            token, self.access_url,
+            token,
+            http_request,
             method=method,
-            params={'oauth_verifier' : verifier}
+            params={'oauth_verifier': verifier}
         )
 
     ###
     # XAuth stuff (2LO)
     #
-    def xauth_access_token(self, credentials, callback):
+    def xauth_access_token(self, credentials, http_request, callback):
         """
         Get an access token from an username and password combination.
         """
@@ -274,17 +328,23 @@ class OAuthMixin(AuthMixin):
             'x_auth_mode':     'client_auth',
             'x_auth_username': credentials.username,
             'x_auth_password': credentials.password,
-            }
+        }
 
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.access_url, callback=callback)
+
+        # invoke
         self._fetch(
             self._get_consumer(credentials),
-            None, self.access_url, callback,
+            None,
+            http_request,
             method="POST",
             params=parameters,
             body=urlencode(parameters, True).replace('+', '%20')
         )
 
-    def xauth_access_token_sync(self, credentials):
+    def xauth_access_token_sync(self, credentials, http_request):
         """
         Get an access token from an username and password combination.
         """
@@ -292,11 +352,17 @@ class OAuthMixin(AuthMixin):
             'x_auth_mode':     'client_auth',
             'x_auth_username': credentials.username,
             'x_auth_password': credentials.password,
-            }
+        }
 
+        # compute http_request params
+        http_request = dict(http_request)
+        http_request.update(uri=self.access_url)
+
+        # invoke
         return self._fetch_sync(
             self._get_consumer(credentials),
-            None, self.access_url,
+            None,
+            http_request,
             method="POST",
             params=parameters,
             body=urlencode(parameters, True).replace('+', '%20')
@@ -318,7 +384,7 @@ class OAuthMixin(AuthMixin):
             raise AuthError("Missing oauth tokens")
 
         # POST
-        headers  = request.headers
+        headers = request.headers
         if request.verb == "POST":
             assert 'content-type' in headers
 
@@ -349,19 +415,21 @@ class OAuthMixin(AuthMixin):
             env['body'] = oauth_request.to_postdata()
         elif request.verb in ('GET', 'HEAD',):
             # remove params and update uri store params
-            request.uri   = oauth_request.to_url()
+            request.uri = oauth_request.to_url()
             env["params"] = None
         else:
-            headers.update(oauth_request.to_header(               \
-                    realm=self._get_realm(request.uri)))
+            headers.update(oauth_request.to_header(
+                realm=self._get_realm(request.uri)))
 
     @engine
-    def _authenticate(self, credentials, callback):
+    def _authenticate(self, credentials, request, callback):
+        """Run Oauth 1.0a auth handshake"""
+
         token = None
 
         # First try, if possible, to renew token
         try:
-            token = yield Task(self.renew_token, credentials)
+            token = yield Task(self.renew_token, credentials, request)
             callback(token)
             return
         except HandShakeError, err:
@@ -375,26 +443,30 @@ class OAuthMixin(AuthMixin):
         try:
             if credentials.oauth_callback_handler:
                 # Use PIN based OAuth
-                token = yield Task(self.request_token, credentials)
+                token = yield Task(self.request_token, credentials, request)
                 reurl = self.authorization_redirect(token)
                 verfy = credentials.oauth_callback_handler(reurl)
-                token = yield Task(self.access_token, credentials, token, verfy)
+                token = yield Task(
+                    self.access_token, credentials, token, verfy, request)
             else:
                 # Use XAuth
-                token = yield Task(self.xauth_access_token, credentials)
+                token = yield Task(
+                    self.xauth_access_token, credentials, request)
             # retval
             callback(token)
         # A handshake error is also notified.
         except HandShakeError, err:
-            callback(err.message)
+            callback(str(err))
         except HTTPError, err:
             callback(err)
 
-    def _authenticate_sync(self, credentials):
+    def _authenticate_sync(self, credentials, request):
+        """Run Oauth 1.0a auth handshake syncronously"""
+
         token = None
         # First try, if possible, to renew token
         try:
-            return self.renew_token_sync(credentials)
+            return self.renew_token_sync(credentials, request)
         except HandShakeError, err:
             pass
         except HTTPError, err:
@@ -404,20 +476,22 @@ class OAuthMixin(AuthMixin):
 
         if credentials.oauth_callback_handler:
             # Use PIN based OAuth
-            token = self.request_token_sync(credentials)
+            token = self.request_token_sync(credentials, request)
             reurl = self.authorization_redirect(token)
             verfy = credentials.oauth_callback_handler(reurl)
-            token = self.access_token_sync(credentials, token, verfy)
+            token = self.access_token_sync(credentials, token, verfy, request)
         else:
             # Use XAuth
-            token = self.xauth_access_token_sync(credentials)
+            token = self.xauth_access_token_sync(credentials, request)
         return token
 
     def _update_credentials(self, credentials, token):
+        """Save secret token"""
+
         # store token
         credentials.store(self.implements)['token'] = None
         if isinstance(token, Token):
-            credentials.store(self.implements)['token']=token
+            credentials.store(self.implements)['token'] = token
 
     ##
     # Auth Main methods
@@ -428,7 +502,7 @@ class OAuthMixin(AuthMixin):
         try:
             self.sign(credentials, request, env)
         except AuthError:
-            response = yield Task(self._authenticate, credentials)
+            response = yield Task(self._authenticate, credentials, request)
             self._update_credentials(credentials, response)
         # fetch token or response from server
         response = response or credentials.store(self.implements)['token']
@@ -439,6 +513,6 @@ class OAuthMixin(AuthMixin):
             self.sign(credentials, request, env)
         except AuthError:
             # fetch token
-            token = self._authenticate_sync(credentials)
+            token = self._authenticate_sync(credentials, request)
             self._update_credentials(credentials, token)
             self.sign(credentials, request, env)
