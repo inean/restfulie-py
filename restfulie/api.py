@@ -46,19 +46,13 @@ class BaseAPI(object):
     MUST be stateless
     """
 
-    # CLient contains required class information to access this
-    # api. We define this way so we could share server api with
-    # authentication classes
-    CLIENT   = None
     # Which Urls from Client's URLS class attribute should be used
     # when computing invoke endpoint
     TARGET   = None
-    URLS     = {}  # Fallback when Client.URLS is not defined
 
     # Rest smells
     FLAVORS  = None
     CHAIN    = None
-    CACERTS  = None  # Fallback when CLIENT.CACERT is not defined
     COMPRESS = False
 
     # Timeouts
@@ -66,7 +60,7 @@ class BaseAPI(object):
     REQUEST_TIMEOUT = None
 
     @classmethod
-    def __create(cls, endpoint):
+    def __create(cls, client, endpoint):
         """Build REST request with safe defaults"""
 
         return Restfulie.at(
@@ -74,7 +68,7 @@ class BaseAPI(object):
             flavors=cls.FLAVORS,
             chain=cls.CHAIN,
             compress=cls.COMPRESS,
-            ca_certs=getattr(cls.CLIENT, "CACERTS", cls.CACERTS),
+            ca_certs=client.CACERTS,
             connect_timeout=cls.CONNECT_TIMEOUT,
             request_timeout=cls.REQUEST_TIMEOUT
         )
@@ -85,7 +79,7 @@ class BaseAPI(object):
              secure, timeout, args, callback):
         """Implementation of verb GET"""
 
-        return cls.__create(endpoint)                 \
+        return cls.__create(client, endpoint)         \
             .secure(*secure)                          \
             .auth(client.credentials, method=auth)    \
             .accepts(flavor)                          \
@@ -103,7 +97,7 @@ class BaseAPI(object):
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return cls.__create(endpoint)                 \
+        return cls.__create(client, endpoint)         \
             .secure(*secure)                          \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
@@ -121,7 +115,7 @@ class BaseAPI(object):
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return cls.__create(endpoint)                 \
+        return cls.__create(client, endpoint)         \
             .secure(*secure)                          \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
@@ -141,7 +135,7 @@ class BaseAPI(object):
         # See also:
         # https://datatracker.ietf.org/doc/draft-ietf-appsawg-json-patch/
 
-        return cls.__create(endpoint)                 \
+        return cls.__create(client, endpoint)         \
             .secure(*secure)                          \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
@@ -155,7 +149,7 @@ class BaseAPI(object):
                 secure, timeout, args, callback):
         """Implementation of verb DELETE"""
 
-        return cls.__create(endpoint)                 \
+        return cls.__create(client, endpoint)         \
             .secure(*secure)                          \
             .auth(client.credentials, method=auth)    \
             .accepts(flavor)                          \
@@ -172,8 +166,8 @@ class BaseAPI(object):
             """Compute endpoint if a relative one is pushed"""
             if not endpoint.startswith('http'):
                 # only absolute paths are allowed
-                assert endpoint[0] == '/' and cls.TARGET and cls.CLIENT
-                endpoint = getattr(cls.CLIENT, "URLS", cls.URLS).get(cls.TARGET, "/") + endpoint
+                assert endpoint[0] == '/' and cls.TARGET
+                endpoint = client['URLS'].get(cls.TARGET, "/") + endpoint
             return endpoint
 
         def _peek(value, target, *composition):

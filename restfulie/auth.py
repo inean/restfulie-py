@@ -62,10 +62,6 @@ class BasicAuth(AuthMixin):
 class OAuthMixin(AuthMixin):
     """ oauth method """
 
-    # Decide wich class will be using this api. Base Url will be
-    # fetched from them
-    CLIENT = None
-
     # From Client set of urls, determine which one is preferred to use
     # with this auth method
     TARGET = "oauth"
@@ -456,7 +452,7 @@ class OAuthMixin(AuthMixin):
             callback(token)
         # A handshake error is also notified.
         except HandShakeError, err:
-            callback(str(err))
+            callback(err)
         except HTTPError, err:
             callback(err)
 
