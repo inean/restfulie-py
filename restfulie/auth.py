@@ -105,7 +105,7 @@ class OAuthMixin(AuthMixin):
         def on_response(response):
             """Response callback handler"""
             if hasattr(response, 'error') and response.error:
-                raise HandShakeError(response.error)
+                response.rethrow()
             callback = http_request['callback']
             return callback(Token.from_string(response.buffer.read()))
 
