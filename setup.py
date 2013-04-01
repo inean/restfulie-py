@@ -16,7 +16,7 @@ setup(name="sleipnir-restfulie",
       zip_safe=False,
       install_requires=[
           "oauth2    >= 1.5",
-          "tornado   >= 2.3.0",
+          "tornado   == 2.4.1",
           "hal-json  >= 0.1",
           "jsonpatch >= 0.12",
       ],
