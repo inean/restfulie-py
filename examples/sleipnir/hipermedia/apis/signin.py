@@ -1,7 +1,7 @@
 # -*- mode:python; coding: utf-8 -*-
 
 """
-users
+Sigin
 """
 
 from __future__ import absolute_import
@@ -27,13 +27,13 @@ class Sleipnir(object):
 
     SIGNIN_API = {
         "login": {
-            "endpoint": '',
-            "method"  : 'get',
-            "auth"    : "sleipnir",
-            #"secure" : [True, None] # Use default port
+            "auth"  : "sleipnir",
+            "method": 'get',
+            # Force secure connection. Use default port.
+            "secure": [True, None],
         },
     }
 
     def signin(self, callback):
         return SleipnirMapper.AUTH_API.invoke(
-            self, self.SIGNIN_API["login"], {}, callback)
+            self, self.SIGNIN_API["login"], None, {}, callback)

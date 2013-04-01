@@ -16,6 +16,7 @@ __all__ = ['BaseAPI', 'BaseMapper']
 
 # Project requirements
 from .restfulie import Restfulie
+from .services import Services
 
 # Create:
 #-------.
@@ -47,8 +48,11 @@ class BaseAPI(object):
     """
 
     # Which Urls from Client's URLS class attribute should be used
-    # when computing invoke endpoint
-    TARGET   = None
+    # when computing invoke endpoint. It's an alias for a service. We
+    # must use Targets to translate this alias into a valid service
+    TARGET  = None
+    # A service is an URL and a CACert file registered in Session
+    SERVICE = None
 
     # Rest smells
     FLAVORS  = None
@@ -68,10 +72,22 @@ class BaseAPI(object):
             flavors=cls.FLAVORS,
             chain=cls.CHAIN,
             compress=cls.COMPRESS,
-            ca_certs=client.CACERTS,
+            ca_certs=cls.__cacert(client),
             connect_timeout=cls.CONNECT_TIMEOUT,
             request_timeout=cls.REQUEST_TIMEOUT
         )
+
+    @classmethod
+    def __base_url(cls, client, default=""):
+        """Get base url for Target / Service combination"""
+        url_key = client.TARGETS.get(cls.TARGET, cls.SERVICE)
+        return Services.get_instance().URLS.get(url_key, default)
+
+    @classmethod
+    def __cacert(cls, client):
+        """Get cacert, if any for Target / Service combination"""
+        ca_cert = client.TARGETS.get(cls.TARGET, cls.SERVICE)
+        return Services.get_instance().CACERTS.get(ca_cert)
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
@@ -166,8 +182,8 @@ class BaseAPI(object):
             """Compute endpoint if a relative one is pushed"""
             if not endpoint.startswith('http'):
                 # only absolute paths are allowed
-                assert endpoint[0] == '/' and cls.TARGET
-                endpoint = client['URLS'].get(cls.TARGET, "/") + endpoint
+                assert endpoint[0] == '/'
+                endpoint = cls.__base_url(client) + endpoint
             return endpoint
 
         def _peek(value, target, *composition):

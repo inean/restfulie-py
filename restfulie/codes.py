@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
 Codes: HTTP Codes stolen from httplib
@@ -135,10 +134,12 @@ responses = {
 }
 
 #pylint:disable-msg=C0103, C0111, C0321
-def is2XX(code): return code >= 200 and code <= 299
-def is3XX(code): return code >= 300 and code <= 399
-def is4XX(code): return code >= 400 and code <= 499
-def is5XX(code): return code >= 500 and code <= 599
+def _code(code): return getattr(code, 'code', code)
+
+def is2XX(code): return _code(code) >= 200 and _code(code) <= 299
+def is3XX(code): return _code(code) >= 300 and _code(code) <= 399
+def is4XX(code): return _code(code) >= 400 and _code(code) <= 499
+def is5XX(code): return _code(code) >= 500 and _code(code) <= 599
 
 #Aliases
 is_successful   = is2XX

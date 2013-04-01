@@ -1,7 +1,7 @@
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
-client
+Client
 """
 
 from __future__ import absolute_import
@@ -11,7 +11,6 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 from contextlib import contextmanager
-from functools import wraps
 
 __all__ = ['Client', 'Extend']
 
@@ -45,16 +44,20 @@ class ClientMeta(type):
     Simple metaclass to make client subclasses discoverable by
     Extend metaclass
     """
-    def __init__(mcs, name, bases, dct):
-        super(ClientMeta, mcs).__init__(name, bases, dct)
+    def __init__(cls, name, bases, dct):
+        super(ClientMeta, cls).__init__(name, bases, dct)
         assert name not in Extend.clients
-        Extend.clients[name] = mcs
+        Extend.clients[name] = cls
 
 
 class Client(object):
     """Base class to implement a remote API"""
 
     __metaclass__ = ClientMeta
+
+    # Allow to translate a Target variable into a valid service tag
+    # already registered in session singleton instance
+    TARGETS = {}
 
     def __init__(self, credentials=None):
         self._config = credentials or Credentials()

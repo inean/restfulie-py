@@ -1,7 +1,7 @@
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
-account
+Account
 """
 
 from __future__ import absolute_import
