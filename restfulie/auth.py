@@ -33,6 +33,7 @@ except ImportError:
 # local submodule requirements
 from .processor import AuthMixin
 from .services import Services
+from .response import Response
 
 
 class AuthError(Exception):
@@ -455,11 +456,10 @@ class OAuthMixin(AuthMixin):
                     self.xauth_access_token, credentials, request)
             # retval
             callback(token)
-        # A handshake error is also notified.
-        except HandShakeError, err:
-            callback(err)
+        # Notify exceptions as responses, so we could fetch error
+        # details easily
         except HTTPError, err:
-            callback(err)
+            callback(Response(err))
 
     def _authenticate_sync(self, credentials, request):
         """Run Oauth 1.0a auth handshake syncronously"""

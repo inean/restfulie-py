@@ -1,17 +1,16 @@
-#!/usr/bin/env python
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
-request
+Response
 """
 
 from __future__ import absolute_import
 
-__author__ = "caelum - http://caelum.com.br"
-__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__ = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
+from collections import namedtuple
 
 __all__ = ['Response']
 
@@ -21,22 +20,35 @@ from .patchers import Patchers
 from .links import Links
 from .cached import Cached
 
+
+# Simple error to wrap exceptions to what we may find on an seever
+# error response; pylint: disable-msg=C0103
+_Error = namedtuple('ResponseError', ['status_code', 'value', 'details'])
+
+
 class Response(object):
     """Handle and parse a HTTP response"""
 
-    __slots__ = ("_response", "_resource", "_cached")
-    
+    __slots__ = ("_exception", "_response", "_resource", "_cached")
+
+
     def __init__(self, response):
-        self._response = response
-        self._resource = None
-        self._cached   = None
-        
+        # Init values
+        self._resource  = None
+        self._cached    = None
+        try:
+            # Common Case, an HTTPResponse
+            self._response  = response
+            self._exception = response.error
+        except AttributeError:
+            if isinstance(response, Exception):
+                # Try to handle HTTPErrors
+                self._exception = response
+                self._response  = response.response
+
     def __getattr__(self, key):
-        # already cached stuff
-        if self._cached is None:
-            self._cached = Cached(self.resource)
         # delegate getattr
-        return getattr(self._cached, key)
+        return getattr(self.__cached(), key)
 
     def __setattr__(self, key, value):
         # private stuff
@@ -44,31 +56,41 @@ class Response(object):
             object.__setattr__(self, key, value)
             return
         # already cached stuff
+        setattr(self.__cached(), key, value)
+
+    def __iter__(self):
+        return iter(self.__cached())
+
+    def __cached(self):
+        """
+        Get a wrapable arount resource to make easy to fetch keys
+        as attributes
+        """
+        # already cached stuff
         if self._cached is None:
             self._cached = Cached(self.resource)
-        setattr(self._cached, key, value)
-            
-    def __iter__(self):
-        return iter(self.resource)
+        return self._cached
 
     @property
     def headers(self):
         """Returns HTTP headers"""
-        return self._response.headers
+        return self._response and self._response.headers or {}
 
     @property
     def code(self):
         """Returns response code"""
-        return self._response.code
+        return self._response and self._response.code or self._exception.code
 
     @property
     def body(self):
         """Returns a formatted body"""
-        return self._response.body
+        return self._response and self._response.body or ""
 
     @property
     def resource(self):
         """Unmarshalled object of the response body"""
+        # Response may be an empty string if comes from an tornado
+        # client exception
         if self._resource is None:
             # sanity values
             resbuffer = ""
@@ -87,7 +109,13 @@ class Response(object):
     @property
     def error(self):
         """Get exception if any from server"""
-        return self.resource.error()
+        retval = self.resource.error()
+        if not retval and self._exception:
+            retval = _Error(
+                self._exception.code,
+                self._exception.message,
+                None)
+        return retval
 
     #pylint: disable-msg=W0201
     @property
@@ -109,4 +137,7 @@ class Response(object):
         patcher = Patchers.for_type(patcher_type.split(';')[0])
         return patcher.make(self._resource, self._cached)
 
-        
+    def rethrow(self):
+        """Try to raise again if response was an error"""
+        if self._exception:
+            raise self._exception
