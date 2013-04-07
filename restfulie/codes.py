@@ -133,18 +133,53 @@ responses = {
     599: 'Connection closed',
 }
 
-#pylint:disable-msg=C0103, C0111, C0321
-def _code(code): return getattr(code, 'code', code)
 
-def is2XX(code): return _code(code) >= 200 and _code(code) <= 299
-def is3XX(code): return _code(code) >= 300 and _code(code) <= 399
-def is4XX(code): return _code(code) >= 400 and _code(code) <= 499
-def is5XX(code): return _code(code) >= 500 and _code(code) <= 599
+def _code(code):
+    """
+    Suggar accessor to handle integers, exceptions and response
+    objects"""
+    return getattr(code, 'code', code)
+
+
+def is2XX(code):
+    """Check for 2XX code errors"""
+    return _code(code) >= 200 and _code(code) <= 299
+
+
+def is3XX(code):
+    """Check for redirect responses"""
+    return _code(code) >= 300 and _code(code) <= 399
+
+
+def is4XX(code):
+    """Check for simple client side errors"""
+    return _code(code) >= 400 and _code(code) <= 499
+
+
+def is5XX(code):
+    """Check for server side internal errors"""
+    return _code(code) >= 500 and _code(code) <= 599
+
+
+def is_error(code):
+    """Chef if response is valid"""
+    return is4XX(code) or is5XX(code)
+
+
+def is_runtime_error(code):
+    """Handle timeout, SSL errors, etc"""
+    if _code == 599:
+        # Whe trap a tiemout or SSL error, we get a 599 code and no server
+        return hasattr(code, 'error') and not hasattr(code.error, 'details')
+    return False
+
+
+def is_server_error(code):
+    """Check if it's and server internal error"""
+    return is5XX(code) and not is_runtime_error(code)
+
 
 #Aliases
-is_successful   = is2XX
-is_redirection  = is3XX
+is_successful = is2XX
+is_redirection = is3XX
 is_client_error = is4XX
-is_server_error = is5XX
-
-def is_error(code): return is4XX(code) or is5XX(code)
