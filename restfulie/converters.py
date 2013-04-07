@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
 converter
@@ -19,8 +18,10 @@ __all__ = ['Converters', 'ConverterMixin']
 
 # local submodule requirements
 
+
 class ConverterError(Exception):
     """Resource exception"""
+
 
 class Converters(object):
     """Utility methods for converters."""
@@ -33,7 +34,7 @@ class Converters(object):
         cls.types[a_type] = converter
 
     @classmethod
-    def marshaller_for(cls, a_type):
+    def for_type(cls, a_type):
         """Return a converter for the given type"""
         if type(a_type) in (str, unicode,):
             # common case. Throw a key error exception if no valid one
@@ -49,23 +50,19 @@ class Converters(object):
 
         # Dinamically, create a valid converter if required for this
         # kind of element.Converters are stateless,
-        return cls.types.setdefault(   \
-            key,                              \
+        return cls.types.setdefault(
+            key,
             cls.types[a_type[0]].__class__(a_type[1:]))
 
-    @classmethod
-    def for_type(cls, a_type):
-        return cls.marshaller_for(a_type)
-        
-    
+
 class MetaConverter(type):
     """Converter Metaclass"""
 
-    def __init__(mcs, name, bases, dct):
-        type.__init__(mcs, name, bases, dct)
+    def __init__(cls, name, bases, dct):
+        type.__init__(cls, name, bases, dct)
         if name.endswith("Converter"):
-            for a_type in mcs.types:
-                Converters.register(a_type, mcs())
+            for a_type in cls.types:
+                Converters.register(a_type, cls())
 
 
 class ConverterMixin(object):
@@ -82,7 +79,7 @@ class ConverterMixin(object):
         assert not a_type_list or hasattr('__iter__', a_type_list)
         # Allow this class to also be used like a dead end
         if a_type_list and len(a_type_list) > 1:
-            self._chain = Converters.marshaller_for(list(a_type_list)[1:])
+            self._chain = Converters.for_type(list(a_type_list)[1:])
 
     def marshal(self, content):
         """Does nothing"""

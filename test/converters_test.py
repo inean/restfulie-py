@@ -13,12 +13,12 @@ class converters_test:
 
         assert Converters.types["text/plain"] == converter
 
-    def test_should_discover_a_marshaller_for_a_type(self):
-        assert Converters.marshaller_for("application/atom").__class__ == \
+    def test_should_discover_a_for_type_a_type(self):
+        assert Converters.for_type("application/atom").__class__ == \
                XmlConverter().__class__
         converter = PlainConverter()
         Converters.register("text/plain", converter)
-        assert Converters.marshaller_for("text/plain") == converter
+        assert Converters.for_type("text/plain") == converter
 
 
 class generic_marshaller_test:
