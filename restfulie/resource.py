@@ -13,7 +13,7 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 
-__all__ = ['Resource']
+__all__ = ['Resource', 'MappingResource']
 
 # Project requirements
 
@@ -24,7 +24,7 @@ class ResourceError(Exception):
     """Resource exception"""
 
 
-#pylint: disable-msg=R0921
+#pylint: disable-msg=R0922
 class Resource(object):
     """
     Prepares a connection. only get a pika connection is lazy
@@ -49,3 +49,34 @@ class Resource(object):
         suported by format
         """
         raise NotImplementedError
+
+
+#pylint: disable-msg=R0921
+class MappingResource(Resource):
+    """
+    An specialiced resources that allow to access item collections
+    """
+
+    def __len__(self):
+        raise NotImplementedError
+
+    def __iter__(self):
+        raise NotImplementedError
+
+    def __contains__(self, key):
+        raise NotImplementedError
+
+    def __getitem__(self, key):
+        raise NotImplementedError
+
+    def __setitem__(self, key, value):
+        raise AttributeError(
+            "Trying to set '{0}' to '{1}' on "
+            "a read only resource".format(key, value)
+        )
+
+    def __delitem__(self, key):
+        raise AttributeError(
+            "Trying to remove '{0}' on a read only "
+            "resource".format(key)
+        )

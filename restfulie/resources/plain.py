@@ -38,10 +38,11 @@ class PlainResource(Resource):
     def links(self):
         return self._links
 
-    @property
     def body(self):
-        """Returns simple content"""
         return self._content
+
+    def error(self):
+        return None
 
 
 class PlainConverter(ConverterMixin):

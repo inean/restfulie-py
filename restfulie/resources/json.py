@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
 json
@@ -9,8 +8,7 @@ Json converter and resource
 
 from __future__ import absolute_import
 
-__author__ = "caelum - http://caelum.com.br"
-__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__ = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
@@ -28,13 +26,13 @@ __all__ = []
 # Project requirements
 
 # local submodule requirements
-from ..resource import Resource
+from ..resource import MappingResource
 from ..links import Links, Link
 from ..converters import Converters, ConverterMixin
 from ..patchers import PatcherMixin, PatcherError
 
 
-class JsonResource(Resource):
+class JsonResource(MappingResource):
     """This resource is returned when a JSON is unmarshalled"""
 
     class JsonData(dict):
@@ -47,11 +45,11 @@ class JsonResource(Resource):
                 dict.__setattr__(self, key, value)
                 return
             self[key] = value
-            
+
     def __init__(self, data):
         """JsonResource attributes can be accessed with 'dot'"""
         super(JsonResource, self).__init__()
-        
+
         # We don't spect a tuple from remote, becouse som
         # vulnerabilities with JSON and javascript. Otherwise, is
         # legal to produce json tuple and send to server, (for
@@ -64,10 +62,11 @@ class JsonResource(Resource):
         self._error  = None
         self._links  = Links([])
         self._data   = self.JsonData()
+        self._body   = data
 
         # Parse data
-        self._parse_data(self._data, data)
-        
+        self._parse_data(self._data, self._body)
+
     def __len__(self):
         return len(self._data)
 
@@ -79,12 +78,12 @@ class JsonResource(Resource):
 
     def __getitem__(self, key):
         return self._data[key]
-        
+
     def __getattr__(self, key):
         if not key.startswith("_"):
             return getattr(self._data, key)
         raise AttributeError(key)
-        
+
     def _parse_data(self, root, data):
         """
         Process data dictionary and store it on root. Root should
@@ -142,9 +141,12 @@ class JsonResource(Resource):
     def links(self):
         return self._links
 
+    def body(self):
+        return self._body
+
     def error(self):
         return self._error
-        
+
 
 class JsonConverter(ConverterMixin):
     """Converts objects from and to JSON"""
@@ -161,7 +163,7 @@ class JsonConverter(ConverterMixin):
     def marshal(self, content):
         """Produces a JSON representation of the given content"""
         if hasattr(content, 'write'):
-            return json.dump(content)    
+            return json.dump(content)
         return json.dumps(content)
 
     #pylint: disable-msg=R0201
@@ -171,6 +173,7 @@ class JsonConverter(ConverterMixin):
             return JsonResource(json.load(json_content))
         return JsonResource(json.loads(json_content))
 
+
 class JsonPatcher(PatcherMixin):
     """Merge and create patchs in jsonpatch format"""
 
@@ -178,7 +181,7 @@ class JsonPatcher(PatcherMixin):
 
     def __init__(self):
         PatcherMixin.__init__(self)
-        
+
     @staticmethod
     def __get_python_container(container):
         """
@@ -190,7 +193,7 @@ class JsonPatcher(PatcherMixin):
         except Exception, err:
             raise PatcherError(err.message)
         return container
-    
+
     def apply(self, doc, patch, in_place=False):
         # get a valid dict of fail
         doc = self.__get_python_container(doc)
@@ -201,8 +204,3 @@ class JsonPatcher(PatcherMixin):
         src = self.__get_python_container(src)
         dst = self.__get_python_container(dst)
         return jsonpatch.make_patch(src, dst).patch
-            
-    
-            
-        
-        
