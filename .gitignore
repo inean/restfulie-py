@@ -1,9 +1,9 @@
-*~
-*.pyc
 *.egg-info
+*.pyc
+*~
 .project
 .pydevproject
-env/
-dist/
+ENV/
 build/
-Makefile
+ca.pem
+dist/

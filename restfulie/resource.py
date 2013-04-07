@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
 resource
@@ -9,8 +8,7 @@ Represents a generic gateway to AMQP implementation
 
 from __future__ import absolute_import
 
-__author__ = "caelum - http://caelum.com.br"
-__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__ = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
@@ -21,16 +19,18 @@ __all__ = ['Resource']
 
 # local submodule requirements
 
+
 class ResourceError(Exception):
     """Resource exception"""
 
+
 #pylint: disable-msg=R0921
 class Resource(object):
-    """Prepares a connection. only get a pika connection is lazy created"""
+    """
+    Prepares a connection. only get a pika connection is lazy
+    created
+    """
 
-    def __getitem__(self, key):
-        raise NotImplementedError
-        
     def links(self):
         """Returns a list of all links."""
         raise NotImplementedError
@@ -39,9 +39,13 @@ class Resource(object):
         """Return a Link with rel."""
         raise NotImplementedError
 
+    def body(self):
+        """Returns content"""
+        raise NotImplementedError
+
     def error(self):
         """
         Return error if any or None if no error is present or isn't
         suported by format
         """
-        return None
+        raise NotImplementedError

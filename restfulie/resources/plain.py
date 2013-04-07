@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- mode:python; tab-width: 2; coding: utf-8 -*-
+# -*- mode:python; coding: utf-8 -*-
 
 """
 plain
@@ -9,8 +8,7 @@ Plain converter and resource
 
 from __future__ import absolute_import
 
-__author__ = "caelum - http://caelum.com.br"
-__modified_by__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__ = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
@@ -34,17 +32,14 @@ class PlainResource(Resource):
         self._content = content
         self._links = Links([])
 
-    def __len__(self):
-        return 0
-
-    def link(self, rel):
+    def link(self, rel, default=None):
         return None
 
     def links(self):
         return self._links
 
     @property
-    def content(self):
+    def body(self):
         """Returns simple content"""
         return self._content
 
@@ -52,7 +47,7 @@ class PlainResource(Resource):
 class PlainConverter(ConverterMixin):
     """Dummy converter to plain text"""
 
-    types = ['text/plain', 'text/html',]
+    types = ['text/plain', 'text/html']
 
     def __init__(self):
         ConverterMixin.__init__(self)
