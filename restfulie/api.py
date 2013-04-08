@@ -270,7 +270,7 @@ class BaseMapper(object):
             assert len(args) <= 1
             body = args[0] if args else None
 
-            return self.API.invoke(
+            return self.BASE_API.invoke(
                 self.__client, self.__api[action], body, params, callback)
 
         # validate
