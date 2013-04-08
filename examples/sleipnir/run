@@ -14,6 +14,7 @@ from hipermedia.api  import Sleipnir
 from hipermedia.apis import *  # Extends Sleipnir
 
 # sugar
+import os
 import sys
 import signal
 import random
@@ -29,7 +30,26 @@ class Callbacks(object):
 
     @classmethod
     def on_me(cls, client, me):
-        assert codes.is2XX(me.code)
+        # Check for SSL or timeout errors. error contains:
+        # me.error.code
+        # me.error.value
+        if codes.is_runtime_error(me):
+            sys.stdout.write("{0}\n".format(me.error.value))
+            sys.exit(-1)
+            # we could rethorw exception
+            # me.rethrow()
+
+        # Check for server side itnernal errors. Error contains also
+        # me.error.details.type
+        # me.error.details.traceback
+        if codes.is_server_error(me) or codes.is_client_error(me):
+            sys.stdout.write("{0}\n".format(me.error.value))
+            if me.error.details:
+                sys.stdout.write("".join(me.error.details.traceback))
+            sys.exit(-1)
+
+        # Response was ok
+        assert codes.is2XX(me)
 
         # update Person details
         me.name    = "Jon" + cls._entropy(3)
@@ -48,7 +68,7 @@ class Callbacks(object):
 
     @staticmethod
     def on_updated(response):
-        assert codes.is2XX(response.code)
+        assert codes.is2XX(response)
         # TODO:
         # allow hipermedia if any link is presented
         # if 'update_avatar' in response.links:
@@ -64,11 +84,18 @@ class Callbacks(object):
 
     @staticmethod
     def on_update_avatar(response):
-        assert codes.is2XX(response.code)
+        assert codes.is2XX(response)
 
 
 class Console(Sleipnir):
     """ Minimal credentials class"""
+
+    BASE_URL = "https://dilbert.local:8443"
+
+    def __init__(self, credentials=None):
+        ca_pem = os.path.join(os.path.dirname(__file__), "ca.pem")
+        self.override_ca_certs(locations=[os.path.abspath(ca_pem)])
+        Sleipnir.__init__(self, credentials)
 
     def on_credential_required(self, properties, credential):
         value = raw_input(str(credential).capitalize() + ': ').strip()
@@ -86,8 +113,8 @@ if __name__ == "__main__":
 
     # set credentials
     with client.configure() as conf:
-        conf.consumer_key           = "5wXYSVHBaeapdzgCpwrQaw"
-        conf.consumer_secret        = "xQAOPnRSv1WRMnZBiYtQUDkkSIuSyv3BHYM57FXStjU"
+        conf.consumer_key    = "5wXYSVHBaeapdzgCpwrQaw"
+        conf.consumer_secret = "xQAOPnRSv1WRMnZBiYtQUDkkSIuSyv3BHYM57FXStjU"
 
         # Uncomment this for XAuth Based login
         conf.username = "usal"
@@ -105,7 +132,8 @@ if __name__ == "__main__":
     # Set keyboard iterryution
     signal.signal(signal.SIGINT, lambda x, y: sys.exit(0))
 
-    # Async auth call
+    # Async auth call with sigin, 'siginin', sync with 'me'
+    #client.signin(callback=functools.partial(Callbacks.on_me, client))
     client.me(callback=functools.partial(Callbacks.on_me, client))
 
     # Async call

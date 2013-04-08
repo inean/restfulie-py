@@ -51,7 +51,6 @@ class Sleipnir(Client):
 
     def __init__(self, credentials=None):
         # Set default  urls for service
-        print self.BASE_URL
         self.override_server(self.BASE_URL)
         # Finish instantiation
         Client.__init__(self, credentials)
@@ -85,6 +84,7 @@ class Sleipnir(Client):
             service = cls.TARGETS['apiv1']
             cls._override_service(service, url, path='/1')
         if override_oauth and 'oauth' in cls.TARGETS:
+            service = cls.TARGETS['oauth']
             cls._override_service(service, url, path='/oauth', secure=True)
 
     @classmethod
@@ -120,8 +120,8 @@ class Sleipnir(Client):
         crt.seek(0)
 
         # Get services that will be overrided by cacerts
-        keys = services or cls.TARGETS.itervalues()
-        assert isinstance(keys, (list, tuple))
+        keys = services or cls.TARGETS.values()
+        assert not isinstance(keys, basestring)
 
         # Register cacert
         ca_files   = [os.path.join(TMPDIR, key) for key in keys]
