@@ -11,11 +11,17 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any common modules
 import os
-import odict
 import shutil
 import tempfile
 import urlparse
 import itertools
+
+# OrderedDict arrived at python2.7
+try:
+    from collections import OrderedDict
+except ImportError:
+    from odict import odict as OrderedDict
+
 
 __all__ = ['SleipnirMapper', 'SleipnirAuth']
 
@@ -64,7 +70,7 @@ class Sleipnir(Client):
         # Parse url; pylint:disable-msg=W0212,E1101
         url = urlparse.urlparse(url)
         assert url.netloc and url.scheme
-        url = odict.odict(itertools.izip(url._fields, url))
+        url = OrderedDict(itertools.izip(url._fields, url))
 
         # Override class urls
         if path:

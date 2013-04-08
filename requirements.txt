@@ -1,0 +1,4 @@
+git+https://github.com/inean/tornado.git@client
+git+https://github.com/inean/python-oauth2.git
+git+https://github.com/inean/python-json-pointer.git
+git+https://github.com/inean/python-json-patch.git

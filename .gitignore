@@ -5,5 +5,4 @@
 .pydevproject
 ENV/
 build/
-ca.pem
 dist/
