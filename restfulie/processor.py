@@ -22,7 +22,7 @@ __all__ = [
 
 # Project requirements
 from tornado.httputil import url_concat
-from tornado.httpclient import HTTPClient, AsyncHTTPClient
+from tornado.httpclient import HTTPClient, AsyncHTTPClient, HTTPError
 
 # local submodule requirements
 from .converters import Converters
@@ -67,8 +67,16 @@ class AuthenticationSyncProcessor(AuthenticationProcessor):
     def execute(self, callback, chain, request, env):
         method = AuthenticationProcessor.execute
         method, cred = method(self, callback, chain, request, env)
-        # pylint: disable-msg=W0106
-        method and self.backends[method].authorize_sync(cred, request, env)
+
+        # Becouse authorize_sync calls are 'embbedded' on flow, we
+        # need a way to notify to callback that an error happened. To
+        # do that, we follow comvention to embbed error on a Response
+        # instance and pass it to callback. pylint: disable-msg=W0106
+        try:
+            method and self.backends[method].authorize_sync(cred, request, env)
+        except HTTPError, err:
+            callback(Response(err))
+            return
         # follow if no method used
         return chain.follow(callback, request, env)
 

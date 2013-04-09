@@ -31,7 +31,7 @@ class Callbacks(object):
     @classmethod
     def on_me(cls, client, me):
         # Check for SSL or timeout errors. error contains:
-        # me.error.code
+        # me.error.status_code
         # me.error.value
         if codes.is_runtime_error(me):
             sys.stdout.write("{0}\n".format(me.error.value))
