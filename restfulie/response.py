@@ -113,7 +113,7 @@ class Response(object):
         if not retval and self._exception:
             retval = _Error(
                 self._exception.code,
-                self._exception.message,
+                str(self._exception),
                 None)
         return retval
 

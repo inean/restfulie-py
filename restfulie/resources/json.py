@@ -191,7 +191,7 @@ class JsonPatcher(PatcherMixin):
             if isinstance(container, basestring) or hasattr(container, 'read'):
                 container = Converters.for_type('json').unmarshal(container)
         except Exception, err:
-            raise PatcherError(err.message)
+            raise PatcherError(str(err))
         return container
 
     def apply(self, doc, patch, in_place=False):
