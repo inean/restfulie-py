@@ -190,7 +190,7 @@ class BaseAPI(object):
             if not endpoint.startswith('http'):
                 # only relative paths are allowed. Those path will be
                 # appended to service path
-                assert endpoint[0] != '/'
+                assert len(endpoint) == 0 or endpoint[0] != '/'
                 endpoint = cls.__base_url(client, extra_path=endpoint)
             return endpoint
 
