@@ -14,8 +14,11 @@ import re
 import sys
 import itertools
 
-_SCHEME_RE = re.compile(r'(http.?://)?(?P<url>.*)')
-_PORT_RE   = re.compile(r'(?P<host>[^:/ ]+)(:[0-9]*)?(?P<url>.*)')
+_PROT_RE = re.compile(r'(?P<proto>http.?://)?'
+                      '(?P<url>.*)')
+_PORT_RE = re.compile(r'(?P<proto>http.?://)?'
+                      '(?P<host>[^:/ ]+)(:[0-9]*)?(?P<url>.*)')
+
 
 __all__ = ['Configuration']
 
@@ -119,12 +122,15 @@ class Configuration(object):
         if __debug__:
             sys.stderr.write("=" * 70)
             sys.stderr.write("\nRequest:{0} {1}".format(self.verb, self.uri))
+
             sys.stderr.write("\nHeaders:")
             sys.stderr.write("\n  Accept:'{0}'".format(self.headers['accept']))
             if 'content-type' in self.headers:
                 ctype = self.headers['content-type']
                 sys.stderr.write("\n  Content-Type:'{0}'".format(ctype))
                 sys.stderr.write("\n  Compressed:'{0}'".format(self.use_gzip))
+            if self.uri.startswith("https"):
+                sys.stderr.write("\nCerts:'{0}'".format(self.ca_certs))
             sys.stderr.write("\n{0}\n".format("=" * 70))
 
         return Request(self)
@@ -138,9 +144,10 @@ class Configuration(object):
         """Force connection using https protocol at port specified"""
         if isinstance(value, bool):
             scheme = 'http' if not value else 'https'
-            self.uri = _SCHEME_RE.sub(scheme + r"://\g<url>", self.uri)
+            self.uri = _PROT_RE.sub(scheme + r"://\g<url>", self.uri)
         if isinstance(port, int):
-            self.uri = _PORT_RE.sub(r"\g<host>:" + port + r"\g<url>", self.uri)
+            regx_str = r"\g<proto>\g<host>:{0}\g<url>".format(port)
+            self.uri = _PORT_RE.sub(regx_str, self.uri)
         if isinstance(ca_certs, basestring):
             self.ca_certs = ca_certs
         return self
