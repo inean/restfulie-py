@@ -134,7 +134,7 @@ class Configuration(object):
 
     def compress(self, compress=True):
         """Notify server that we will be zipping request"""
-        self.use_gzip = compress
+        self.use_gzip = bool(compress)
         return self
 
     def progress(self, progress_callback):
