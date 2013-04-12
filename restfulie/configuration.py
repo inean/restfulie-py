@@ -11,6 +11,7 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 import re
+import sys
 import itertools
 
 _SCHEME_RE = re.compile(r'(http.?://)?(?P<url>.*)')
@@ -113,6 +114,18 @@ class Configuration(object):
         verb_allowed = self.verb in ('POST', 'PUT', 'PATCH')
         if verb_allowed and 'content-type' not in self.headers:
             self.headers['content-type'] = self.FLAVORS['form']['content-type']
+
+        # Debug helper
+        if __debug__:
+            sys.stderr.write("=" * 70)
+            sys.stderr.write("\nRequest:{0} {1}".format(self.verb, self.uri))
+            sys.stderr.write("\nHeaders:")
+            sys.stderr.write("\n  Accept:'{0}'".format(self.headers['accept']))
+            if 'content-type' in self.headers:
+                ctype = self.headers['content-type']
+                sys.stderr.write("\n  Content-Type:'{0}'".format(ctype))
+                sys.stderr.write("\n  Compressed:'{0}'".format(self.use_gzip))
+            sys.stderr.write("\n{0}\n".format("=" * 70))
 
         return Request(self)
 
