@@ -78,16 +78,23 @@ class BaseAPI(object):
         )
 
     @classmethod
-    def __base_url(cls, client, default=""):
+    def __base_url(cls, client, default="", **kwargs):
         """Get base url for Target / Service combination"""
         url_key = client.TARGETS.get(cls.TARGET, cls.SERVICE)
-        return Services.get_instance().URLS.get(url_key, default)
+        return Services.get_instance().get_url(url_key, **kwargs) or default
 
     @classmethod
     def __cacert(cls, client):
         """Get cacert, if any for Target / Service combination"""
-        ca_cert = client.TARGETS.get(cls.TARGET, cls.SERVICE)
-        return Services.get_instance().CACERTS.get(ca_cert)
+        url_key = client.TARGETS.get(cls.TARGET, cls.SERVICE)
+        return Services.get_instance().service(url_key).get('ca_certs')
+
+    # pylint: disable-msg=W0142
+    @classmethod
+    def __secure(cls, client, base):
+        """Get secure tuple overrided if required"""
+        url_key = client.TARGETS.get(cls.TARGET, cls.SERVICE)
+        return Services.get_instance().get_secure(url_key, *base)
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
@@ -96,7 +103,7 @@ class BaseAPI(object):
         """Implementation of verb GET"""
 
         return cls.__create(client, endpoint)         \
-            .secure(*secure)                          \
+            .secure(*cls.__secure(client, secure))    \
             .auth(client.credentials, method=auth)    \
             .accepts(flavor)                          \
             .until(*timeout)                          \
@@ -114,7 +121,7 @@ class BaseAPI(object):
         #multipart form
 
         return cls.__create(client, endpoint)         \
-            .secure(*secure)                          \
+            .secure(*cls.__secure(client, secure))    \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
             .until(*timeout)                          \
@@ -132,7 +139,7 @@ class BaseAPI(object):
         #multipart form
 
         return cls.__create(client, endpoint)         \
-            .secure(*secure)                          \
+            .secure(*cls.__secure(client, secure))    \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
             .until(*timeout)                          \
@@ -152,7 +159,7 @@ class BaseAPI(object):
         # https://datatracker.ietf.org/doc/draft-ietf-appsawg-json-patch/
 
         return cls.__create(client, endpoint)         \
-            .secure(*secure)                          \
+            .secure(*cls.__secure(client, secure))    \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
             .until(*timeout)                          \
@@ -166,7 +173,7 @@ class BaseAPI(object):
         """Implementation of verb DELETE"""
 
         return cls.__create(client, endpoint)         \
-            .secure(*secure)                          \
+            .secure(*cls.__secure(client, secure))    \
             .auth(client.credentials, method=auth)    \
             .accepts(flavor)                          \
             .until(*timeout)                          \
@@ -181,9 +188,10 @@ class BaseAPI(object):
         def _endpoint(endpoint):
             """Compute endpoint if a relative one is pushed"""
             if not endpoint.startswith('http'):
-                # only absolute paths are allowed
-                assert endpoint[0] == '/'
-                endpoint = cls.__base_url(client) + endpoint
+                # only relative paths are allowed. Those path will be
+                # appended to service path
+                assert endpoint[0] != '/'
+                endpoint = cls.__base_url(client, extra_path=endpoint)
             return endpoint
 
         def _peek(value, target, *composition):

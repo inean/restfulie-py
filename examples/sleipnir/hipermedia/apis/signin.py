@@ -6,7 +6,7 @@ Sigin
 
 from __future__ import absolute_import
 
-__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__ = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import required modules
@@ -20,6 +20,7 @@ from ..api import SleipnirMapper
 # a shourcut chain, auth_chain to only get a valid set of tokens
 
 
+# pylint: disable-msg=R0903, E1101
 class Sleipnir(object):
     """This class will extend main Client object"""
 
@@ -35,5 +36,6 @@ class Sleipnir(object):
     }
 
     def signin(self, callback):
+        """Do security handshake"""
         return SleipnirMapper.AUTH_API.invoke(
             self, self.SIGNIN_API["login"], None, {}, callback)

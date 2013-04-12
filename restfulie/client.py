@@ -6,16 +6,30 @@ Client
 
 from __future__ import absolute_import
 
-__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__ = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
-from contextlib import contextmanager
+import os
+import shutil
+import tempfile
+import itertools
+import functools
+import contextlib
 
 __all__ = ['Client', 'Extend']
 
 # local submodule requirements
-from .credentials import Credentials
+from restfulie.services import Services
+from restfulie.credentials import Credentials
+
+# import here local submodules
+TMPDIR = '/var/tmp'
+try:
+    from sleipnir.frontends.handset import constants
+    TMPDIR = constants.__tmp_dir__
+except ImportError:
+    pass
 
 
 class Extend(type):
@@ -55,14 +69,20 @@ class Client(object):
 
     __metaclass__ = ClientMeta
 
+    # Services to be registered
+    SERVICES = {}
+
     # Allow to translate a Target variable into a valid service tag
     # already registered in session singleton instance
     TARGETS = {}
 
     def __init__(self, credentials=None):
+        # register services
+        Services.get_instance().register(self.SERVICES)
+        # create credentials
         self._config = credentials or Credentials()
 
-    @contextmanager
+    @contextlib.contextmanager
     def configure(self):
         """Get an accessor to credentials element"""
         yield self._config
@@ -71,3 +91,76 @@ class Client(object):
     def credentials(self):
         """Get credentials element"""
         return self._config
+
+    @classmethod
+    def _override_ca_certs(cls, services, locations=None, inline=None):
+        """Override ca-certfiles from tornado with a custom cas"""
+
+        def read_files(locs):
+            """Fetch pem files from firt level dirs"""
+
+            pem_dirs = itertools.ifilter(os.path.isdir, locs)
+            pem_dirs = itertools.imap(os.listdir, pem_dirs)
+            # Fetch files
+            pem_file = itertools.ifilterfalse(os.path.isdir, locs)
+            # Open it; pylint: disable-msg=W0142
+            for path in itertools.chain(pem_file, *pem_dirs):
+                # Only process One dir level
+                try:
+                    with open(path, 'r') as source:
+                        yield source.read()
+                except IOError:
+                    pass
+
+        # pylint: disable-msg=W0106
+        os.path.exists(TMPDIR) or os.makedirs(TMPDIR, mode=0755)
+        crt = tempfile.NamedTemporaryFile(dir=TMPDIR)
+
+        if locations:
+            ca_pems = itertools.imap("{0}\n".format, read_files(locations))
+            crt.writelines(ca_pems)
+        if inline:
+            ca_pems = itertools.imap("{0}\n".format, inline)
+            crt.writelines(ca_pems)
+        crt.seek(0)
+
+        # Register cacert
+        ca_files = [os.path.join(TMPDIR, key) for key in services]
+        copy_files = itertools.izip([crt.name] * len(services), ca_files)
+
+        # Copy; pylint: disable-msg=W0106
+        [shutil.copyfile(src, dst) for src, dst in copy_files]
+
+        # Update services dict for selected services
+        instance = Services.get_instance()
+        map_func = functools.partial(instance.set_service_item, "ca_certs")
+        services = ([service] for service in services)
+        list(itertools.imap(map_func, ca_files, services))
+
+    @classmethod
+    def override_target(cls, target, basename):
+        """
+        Create a new service definition and register as default
+        service for selected targets
+        """
+        service = "{0}-{1}".format(basename, target)
+        old_service = service.get_service(cls.TARGETS[target])
+        new_service = dict(old_service) if old_service else dict()
+        Services.get_instance().register((service, new_service))
+
+    @classmethod
+    def override_service_item(cls, key, value=None, services=None, **kwargs):
+        """Override service item"""
+
+        # Get services that will be overrided by cacerts
+        services = services or cls.TARGETS.values()
+        assert not isinstance(services, basestring)
+
+        # ca_certs update is complex, so we delegate to a custom method
+        if key == 'ca_certs':
+            kwargs.pop('services', None)
+            return cls._override_ca_certs(services=services, **kwargs)
+
+        # Update services dict for selected services
+        service_instance = Services.get_instance()
+        service_instance.set_service_item(key, value, services)

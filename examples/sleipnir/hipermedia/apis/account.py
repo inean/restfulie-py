@@ -6,26 +6,15 @@ Account
 
 from __future__ import absolute_import
 
-__author__  = "Carlos Martin <cmartin@liberalia.net>"
+__author__ = "Carlos Martin <cmartin@liberalia.net>"
 __license__ = "See LICENSE.restfulie for details"
 
 # Import required modules
 from restfulie.client import Extend
+from restfulie.cached import cached
 
 # local submodule requirements
 from ..api import SleipnirMapper
-
-# Optional dependences
-try:
-    from sleipnir.core.decorators import cached
-except ImportError:
-    from functools import wraps
-
-    def cached(func):
-        @wraps(func)
-        def wrapper(*args, **kwds):
-            return func(*args, **kwds)
-        return wrapper
 
 
 class Sleipnir(object):
@@ -35,19 +24,19 @@ class Sleipnir(object):
 
     ACCOUNTS_API = {
         "me": {
-            "endpoint": '/account/me',
+            "endpoint": 'account/me',
             "method"  : 'get',
             "auth"    : 'sleipnir',
         },
         "update": {
-            "endpoint": '/account/update',
+            "endpoint": 'account/update',
             "method"  : 'patch',
             "flavor"  : 'application/json-patch',
             "auth"    : 'sleipnir',
             "body"    : True,
         },
         "update_avatar": {
-            "endpoint": '/account/update/avatar',
+            "endpoint": 'account/update/avatar',
             "method"  : 'put',
             "flavor"  : 'multipart',
             "auth"    : 'sleipnir',
@@ -56,11 +45,14 @@ class Sleipnir(object):
         },
     }
 
+    # pylint: disable-msg=C0103, E1101
     def me(self, callback):
+        """Get own info"""
         return SleipnirMapper.BASE_API.invoke(
             self, self.ACCOUNTS_API["me"], None, {}, callback)
 
     @property
     @cached
     def accounts(self):
+        """Get accounts related info"""
         return SleipnirMapper(self, self.ACCOUNTS_API, ignore=["me"])

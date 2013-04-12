@@ -75,20 +75,22 @@ class OAuthMixin(AuthMixin):
     @property
     def request_url(self):
         """Get request_token url according to OAuth 1.0 specs"""
-        base_url = Services.get_instance().URLS[self.SERVICE]
-        return "{0}/request_token".format(base_url)
+        return Services.get_instance().get_url(self.SERVICE, "request_token")
 
     @property
     def access_url(self):
         """Get access_token url according to OAuth 1.0 specs"""
-        base_url = Services.get_instance().URLS[self.SERVICE]
-        return "{0}/access_token".format(base_url)
+        return Services.get_instance().get_url(self.SERVICE, "access_token")
 
     @property
     def authorize_url(self):
         """Get authorize url according to OAuth 1.0 specs"""
-        base_url = Services.get_instance().URLS[self.SERVICE]
-        return "{0}/authorize".format(base_url)
+        return Services.get_instance().get_url(self.SERVICE, "authorize")
+
+    @property
+    def ca_certs(self):
+        """Get certificates for this flow None to use defaults"""
+        return Services.get_instance().service(self.SERVICE).get("ca_certs")
 
     @property
     #pylint: disable-msg=W0201
@@ -193,7 +195,11 @@ class OAuthMixin(AuthMixin):
 
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.request_url, callback=callback)
+        http_request.update(
+            uri=self.request_url,
+            callback=callback,
+            ca_certs=self.ca_certs)
+
         # invoke
         self._fetch(
             self._get_consumer(credentials),
@@ -208,7 +214,7 @@ class OAuthMixin(AuthMixin):
 
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.request_url)
+        http_request.update(uri=self.request_url, ca_certs=self.ca_certs)
         # invoke
         return self._fetch_sync(
             self._get_consumer(credentials),
@@ -250,7 +256,10 @@ class OAuthMixin(AuthMixin):
 
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.access_url, callback=callback)
+        http_request.update(
+                uri=self.access_url,
+                callback=callback,
+                ca_certs=self.ca_certs)
         # invoke
         self._fetch(
             self._get_consumer(credentials),
@@ -270,7 +279,7 @@ class OAuthMixin(AuthMixin):
 
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.access_url)
+        http_request.update(uri=self.access_url, ca_certs=self.ca_certs)
 
         return self._fetch_sync(
             self._get_consumer(credentials),
@@ -290,7 +299,10 @@ class OAuthMixin(AuthMixin):
 
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.access_url, callback=callback)
+        http_request.update(
+                uri=self.access_url,
+                callback=callback,
+                ca_certs=self.ca_certs)
         # invoke
         self._fetch(
             self._get_consumer(credentials),
@@ -309,7 +321,7 @@ class OAuthMixin(AuthMixin):
         """
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.access_url)
+        http_request.update(uri=self.access_url, ca_certs=self.ca_certs)
         # invoke
         return self._fetch_sync(
             self._get_consumer(credentials),
@@ -334,8 +346,10 @@ class OAuthMixin(AuthMixin):
 
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.access_url, callback=callback)
-
+        http_request.update(
+                uri=self.access_url,
+                callback=callback,
+                ca_certs=self.ca_certs)
         # invoke
         self._fetch(
             self._get_consumer(credentials),
@@ -358,7 +372,7 @@ class OAuthMixin(AuthMixin):
 
         # compute http_request params
         http_request = dict(http_request)
-        http_request.update(uri=self.access_url)
+        http_request.update(uri=self.access_url, ca_certs=self.ca_certs)
 
         # invoke
         return self._fetch_sync(
