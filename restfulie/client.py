@@ -11,6 +11,7 @@ __license__ = "See LICENSE.restfulie for details"
 
 # Import here any required modules.
 import os
+import re
 import shutil
 import tempfile
 import itertools
@@ -24,6 +25,7 @@ from restfulie.services import Services
 from restfulie.credentials import Credentials
 
 # import here local submodules
+RE = re.compile(r'[^\w\-_\.]')
 TMPDIR = '/var/tmp'
 try:
     from sleipnir.frontends.handset import constants
@@ -125,7 +127,7 @@ class Client(object):
         crt.seek(0)
 
         # Register cacert
-        ca_files = [os.path.join(TMPDIR, key) for key in services]
+        ca_files = [os.path.join(TMPDIR, RE.sub('@', key)) for key in services]
         copy_files = itertools.izip([crt.name] * len(services), ca_files)
 
         # Copy; pylint: disable-msg=W0106
@@ -158,7 +160,6 @@ class Client(object):
 
         # ca_certs update is complex, so we delegate to a custom method
         if key == 'ca_certs':
-            kwargs.pop('services', None)
             return cls._override_ca_certs(services=services, **kwargs)
 
         # Update services dict for selected services
