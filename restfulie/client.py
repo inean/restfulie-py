@@ -140,15 +140,18 @@ class Client(object):
         list(itertools.imap(map_func, ca_files, services))
 
     @classmethod
-    def override_target(cls, target, basename):
+    def override_service(cls, service_name, **items):
         """
         Create a new service definition and register as default
         service for selected targets
         """
-        service = "{0}-{1}".format(basename, target)
-        old_service = service.get_service(cls.TARGETS[target])
+        instance = Services.get_instance()
+        old_service = instance.service(service_name)
+        # Old service is frozen. Clone and update
         new_service = dict(old_service) if old_service else dict()
-        Services.get_instance().register((service, new_service))
+        new_service.update(items)
+        # Register
+        instance.register((service_name, new_service))
 
     @classmethod
     def override_service_item(cls, key, value=None, services=None, **kwargs):
