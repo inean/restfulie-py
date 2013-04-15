@@ -147,6 +147,17 @@ class Client(object):
         list(itertools.imap(map_func, ca_files, services))
 
     @classmethod
+    def override_entrypoint(cls, target, endpoint, service_name):
+        """
+        Register service_name as provider of target/endpoint
+        combination
+        """
+        # fetch services
+        instance = Services.get_instance()
+        # Register
+        instance.register(target, endpoint, service_name)
+
+    @classmethod
     def override_service(cls, service_name, **items):
         """
         Create a new service definition and register as default
