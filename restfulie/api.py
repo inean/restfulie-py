@@ -47,11 +47,11 @@ class BaseAPI(object):
     MUST be stateless
     """
 
-    # Which Urls from Client's URLS class attribute should be used
-    # when computing invoke endpoint. It's an alias for a service. We
-    # must use Targets to translate this alias into a valid service
-    TARGET  = None
-    # A service is an URL and a CACert file registered in Session
+    # There's to ways to resolve a service by a service. Use
+    # TARGET/Endpoint combination or...
+    ENDPOINT = None
+
+    # use Service Name directly on Service tag
     SERVICE = None
 
     # Rest smells
@@ -64,7 +64,7 @@ class BaseAPI(object):
     REQUEST_TIMEOUT = None
 
     @classmethod
-    def __create(cls, client, endpoint):
+    def __create(cls, endpoint):
         """Build REST request with safe defaults"""
 
         return Restfulie.at(
@@ -72,29 +72,32 @@ class BaseAPI(object):
             flavors=cls.FLAVORS,
             chain=cls.CHAIN,
             compress=cls.COMPRESS,
-            ca_certs=cls.__cacert(client),
+            ca_certs=cls.__cacert(),
             connect_timeout=cls.CONNECT_TIMEOUT,
             request_timeout=cls.REQUEST_TIMEOUT
         )
 
     @classmethod
-    def __base_url(cls, client, default="", **kwargs):
+    def __base_url(cls, default="", **kwargs):
         """Get base url for Target / Service combination"""
-        url_key = client.TARGETS.get(cls.TARGET, cls.SERVICE)
-        return Services.get_instance().get_url(url_key, **kwargs) or default
+        services = Services.get_instance()
+        endpoint = services.resolv(cls.ENDPOINT, cls.SERVICE)
+        return services.get_url(endpoint, **kwargs) or default
 
     @classmethod
-    def __cacert(cls, client):
+    def __cacert(cls):
         """Get cacert, if any for Target / Service combination"""
-        url_key = client.TARGETS.get(cls.TARGET, cls.SERVICE)
-        return Services.get_instance().service(url_key).get('ca_certs')
+        services = Services.get_instance()
+        endpoint = services.resolv(cls.ENDPOINT, cls.SERVICE)
+        return Services.get_instance().service(endpoint).get('ca_certs')
 
     # pylint: disable-msg=W0142
     @classmethod
-    def __secure(cls, client, base):
+    def __secure(cls, base):
         """Get secure tuple overrided if required"""
-        url_key = client.TARGETS.get(cls.TARGET, cls.SERVICE)
-        return Services.get_instance().get_secure(url_key, *base)
+        services = Services.get_instance()
+        endpoint = services.resolv(cls.ENDPOINT, cls.SERVICE)
+        return Services.get_instance().get_secure(endpoint, *base)
 
     #pylint: disable-msg=C0301, R0913, W0142
     @classmethod
@@ -102,8 +105,8 @@ class BaseAPI(object):
              secure, timeout, args, callback):
         """Implementation of verb GET"""
 
-        return cls.__create(client, endpoint)         \
-            .secure(*cls.__secure(client, secure))    \
+        return cls.__create(endpoint)                 \
+            .secure(*cls.__secure(secure))            \
             .auth(client.credentials, method=auth)    \
             .accepts(flavor)                          \
             .until(*timeout)                          \
@@ -120,8 +123,8 @@ class BaseAPI(object):
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return cls.__create(client, endpoint)         \
-            .secure(*cls.__secure(client, secure))    \
+        return cls.__create(endpoint)                 \
+            .secure(*cls.__secure(secure))            \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
             .until(*timeout)                          \
@@ -138,8 +141,8 @@ class BaseAPI(object):
         #file (has read function) is pased in args, encode it as
         #multipart form
 
-        return cls.__create(client, endpoint)         \
-            .secure(*cls.__secure(client, secure))    \
+        return cls.__create(endpoint)                 \
+            .secure(*cls.__secure(secure))            \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
             .until(*timeout)                          \
@@ -158,8 +161,8 @@ class BaseAPI(object):
         # See also:
         # https://datatracker.ietf.org/doc/draft-ietf-appsawg-json-patch/
 
-        return cls.__create(client, endpoint)         \
-            .secure(*cls.__secure(client, secure))    \
+        return cls.__create(endpoint)                 \
+            .secure(*cls.__secure(secure))            \
             .as_(flavor)                              \
             .auth(client.credentials, method=auth)    \
             .until(*timeout)                          \
@@ -172,8 +175,8 @@ class BaseAPI(object):
                 secure, timeout, args, callback):
         """Implementation of verb DELETE"""
 
-        return cls.__create(client, endpoint)         \
-            .secure(*cls.__secure(client, secure))    \
+        return cls.__create(endpoint)                 \
+            .secure(*cls.__secure(secure))            \
             .auth(client.credentials, method=auth)    \
             .accepts(flavor)                          \
             .until(*timeout)                          \
@@ -191,7 +194,7 @@ class BaseAPI(object):
                 # only relative paths are allowed. Those path will be
                 # appended to service path
                 assert len(endpoint) == 0 or endpoint[0] != '/'
-                endpoint = cls.__base_url(client, extra_path=endpoint)
+                endpoint = cls.__base_url(extra_path=endpoint)
             return endpoint
 
         def _peek(value, target, *composition):

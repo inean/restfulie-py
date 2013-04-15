@@ -76,11 +76,18 @@ class Client(object):
 
     # Allow to translate a Target variable into a valid service tag
     # already registered in session singleton instance
-    TARGETS = {}
+    ENDPOINTS = {}
 
     def __init__(self, credentials=None):
         # register services
-        Services.get_instance().register(self.SERVICES)
+        services = Services.get_instance()
+        services.set_services(self.SERVICES)
+
+        # register endpoints, if any
+        for endpoint, targets in self.ENDPOINTS.iteritems():
+            for target, service in targets.iteritems():
+                services.register(endpoint, target, service)
+
         # create credentials
         self._config = credentials or Credentials()
 
@@ -145,26 +152,25 @@ class Client(object):
         Create a new service definition and register as default
         service for selected targets
         """
+        # fetch services
         instance = Services.get_instance()
-        old_service = instance.service(service_name)
         # Old service is frozen. Clone and update
-        new_service = dict(old_service) if old_service else dict()
+        new_service = dict(instance.service(service_name)) \
+            if service_name in instance else dict()
         new_service.update(items)
         # Register
-        instance.register((service_name, new_service))
+        instance.set_services([(service_name, new_service,)])
 
     @classmethod
     def override_service_item(cls, key, value=None, services=None, **kwargs):
         """Override service item"""
-
+        # fetch services
+        instance = Services.get_instance()
         # Get services that will be overrided by cacerts
-        services = services or cls.TARGETS.values()
+        services = services or list(iter(instance))
         assert not isinstance(services, basestring)
-
         # ca_certs update is complex, so we delegate to a custom method
         if key == 'ca_certs':
             return cls._override_ca_certs(services=services, **kwargs)
-
         # Update services dict for selected services
-        service_instance = Services.get_instance()
-        service_instance.set_service_item(key, value, services)
+        instance.set_service_item(key, value, services)

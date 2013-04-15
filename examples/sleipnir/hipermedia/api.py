@@ -25,9 +25,11 @@ class Sleipnir(Client):
     """Base client class for Sleipnir API"""
 
     # When scaling, it's probably a good idea to split oauth and api
-    # servers
+    # servers. Services is read at Startup. Services is read at Client
+    # startup to register safe values for well known services. Use
+    # settings to override this with a more accurate ones
     SERVICES = {
-        'sleipnir-apiv1': {
+        'sleipnir/api1': {
             'protocol': 'http',
             'host': 'api.sleipnir-project.com',
             'path': '/1',
@@ -36,7 +38,7 @@ class Sleipnir(Client):
             'ca_certs': None,
             'enforce': False,
         },
-        'sleipnir-oauth': {
+        'sleipnir/oauth1': {
             'protocol': 'https',
             'host': 'api.sleipnir-project.com',
             'path': '/oauth',
@@ -50,9 +52,11 @@ class Sleipnir(Client):
     # Service Map. It allow us to add a level of indirection to
     # diverge between functionality (target key), and WHO provides
     # that functionality
-    TARGETS = {
-        'apiv1': 'sleipnir-apiv1',
-        'oauth': 'sleipnir-oauth',
+    ENDPOINTS = {
+        'sleipnir': {
+            'apiv1': 'sleipnir/api1',
+            'oauth': 'sleipnir/oauth1',
+        },
     }
 
 
@@ -63,7 +67,7 @@ class SleipnirAuth(OAuthMixin):
     # Base Url. OAuthMixin use target directly to resolve agaist
     # Services singleton. We delegate service registration to Client
     # (Sleipnir) object, in this case
-    SERVICE = "sleipnir-oauth"
+    ENDPOINT = "sleipnir/oauth"
 
     # Auth mechanism implemented
     implements = "sleipnir"
@@ -78,7 +82,7 @@ class SleipnirMapper(BaseMapper):
         """Extend BaseAPI class with custom values"""
 
         # Base Url. In this case we use
-        TARGET = "apiv1"
+        ENDPOINT = "sleipnir/apiv1"
 
         # Our api is json based only
         FLAVORS = ["json"]
@@ -93,7 +97,7 @@ class SleipnirMapper(BaseMapper):
 
         # Base Url. In this case we use oauth to enforce security on
         # handshake
-        TARGET = "oauth"
+        ENDPOINT = "sleipnir/oauth"
 
         CHAIN = auth_chain
 

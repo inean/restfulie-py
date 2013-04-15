@@ -13,7 +13,6 @@ __license__ = "See LICENSE.restfulie for details"
 import os
 import numbers
 import urlparse
-import operator
 import itertools
 import collections
 
@@ -23,38 +22,30 @@ __all__ = ['Services']
 from .cached import cached
 
 
-class FrozenDict(collections.Mapping):
-    """A wrapper around a dict to create inmmutable dicts"""
+# pylint: disable-msg=R0903
+class FrozenDict(object):
+    """Proxy to convert mappings into read-only elements"""
 
-    def __init__(self, *args, **kwargs):
-        self.__dict = dict(*args, **kwargs)
-        self.__hash = None
+    __FROZEN_METHODS = (
+        'clear',
+        'pop',
+        'popitem',
+        'setdefault',
+        'update',
+    )
 
-    def __getitem__(self, key):
-        return self.__dict[key]
+    def __init__(self, dct):
+        self.__dct = dct
 
-    def __setitem__(self, key):
-        raise RuntimeError("Unable to set items: Frozen dict")
+    def __getattr__(self, key):
+        if key in self.__FROZEN_METHODS:
+            raise AttributeError("Frozen dict in use")
+        return getattr(self.__dct, key)
 
-    def __delitem__(self, key):
-        raise RuntimeError("Unable to delete items: Frozen dict")
-
-    def __iter__(self):
-        return iter(self.__dict)
-
-    def __len__(self):
-        return len(self.__dict)
-
-    def __repr__(self):
-        return '<frozendict %s>' % repr(self.__dict)
-
-    def __hash__(self):
-        if self.__hash is None:
-            self.__hash = reduce(
-                operator.xor,
-                itertools.imap(hash, self.iteritems()),
-                0)
-        return self.__hash
+    def __setattr__(self, key, value):
+        if not key.startswith("_"):
+            raise AttributeError("Frozen dict in use")
+        object.__setattr__(self, key, value)
 
 
 # pylint: disable-msg=R0903
@@ -76,26 +67,42 @@ class Services(object):
     ]
 
     def __init__(self):
-        self._urls = {}
+        # targets defines a map between services and endpoints
+        self._targets = {}
+        self._services = {}
 
     def __iter__(self):
-        return self._urls.iteritems()
+        return self._services.iterkeys()
 
     def __contains__(self, key):
-        return key in self._urls
+        return key in self._services
+
+    def register(self, target, endpoint, service_name):
+        """Set a endpoint to be handled by service"""
+        self._targets.setdefault(target, {})[endpoint] = service_name
+
+    def resolv(self, entrypoint, fallback=None):
+        """Query wich service provides endpoint"""
+        try:
+            target, _, endpoint = entrypoint.partition("/")
+            return self._targets[target][endpoint]
+        except KeyError, err:
+            if fallback is not None:
+                return fallback
+            raise err
 
     @cached
     def service(self, name):
         """Fetch a service"""
-        retval = self._urls.get(name)
+        retval = self._services.get(name)
         return retval or FrozenDict(retval)
 
-    def register(self, services):
+    def set_services(self, services):
         """
         Register collection of services. Override current values if
         already exists
         """
-        self._urls.update(services)
+        self._services.update(services)
 
     def set_service_item(self, key, value, services=None):
         """
@@ -107,11 +114,13 @@ class Services(object):
         # selective update
         if services:
             assert isinstance(services, collections.Sequence)
-            services = itertools.ifilter(lambda x: x in self._urls, services)
+            svfilter = lambda x: x in self._services
+            services = itertools.ifilter(svfilter, services)
         # update all
-        services = services or self._urls.iterkeys()
+        services = services or self._services.iterkeys()
         # pylint: disable-msg=W0106
-        [self._urls[service].update([(key, value)]) for service in services]
+        [self._services[service].update([(key, value)])
+         for service in services]
 
     def get_url(self, service, extra_path=None, query=None, fragment=None):
         """
@@ -120,7 +129,7 @@ class Services(object):
         """
 
         # fetch service instance
-        service = self._urls.get(service)
+        service = self._services.get(service)
         if service:
             # get protocol
             protocol = service.get('protocol', 'http')
@@ -142,14 +151,17 @@ class Services(object):
         return None
 
     @cached
-    def get_secure(self, service, secure=None, port=None, ca_certs=None):
+    def get_secure(self, service_name, secure=None, port=None, ca_certs=None):
         """Get a secure tuple as required by secure method of restfulie"""
 
+        # fetch service
+        service = self._services[service_name]
+
         # if enforce is set, base is ignored
-        ssecure = self._urls[service].get('protocol') == 'https'
-        sport = self._urls[service].get('secure_port' if ssecure else 'port')
-        sca_certs = self._urls[service].get('ca_certs') if ssecure else None
-        if self._urls[service].get('enforce', False):
+        ssecure = service.get('protocol') == 'https'
+        sport = service.get('secure_port' if ssecure else 'port')
+        sca_certs = service.get('ca_certs') if ssecure else None
+        if service.get('enforce', False):
             return [ssecure, sport, sca_certs]
 
         # Get base values
@@ -162,7 +174,7 @@ class Services(object):
             if retval[0]:
                 port = 'secure_port'
             # override port
-            retval[1] = retval[1] or self._urls[service].get(port)
+            retval[1] = retval[1] or service.get(port)
 
         #if retval[0] or retval[0] is None and ssecure:
         # Add ca_certs if no one is set and https or 'as is' is required

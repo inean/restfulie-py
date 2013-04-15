@@ -67,7 +67,7 @@ class OAuthMixin(AuthMixin):
     # Defines url from Services sigleton to be used. On __init__
     # implementation, we could register those services inside Services
     # instance
-    SERVICE = None
+    ENDPOINT = None
 
     # Auth mechanism implemented
     implements = "oauth"
@@ -75,22 +75,30 @@ class OAuthMixin(AuthMixin):
     @property
     def request_url(self):
         """Get request_token url according to OAuth 1.0 specs"""
-        return Services.get_instance().get_url(self.SERVICE, "request_token")
+        instance = Services.get_instance()
+        endpoint = instance.resolv(self.ENDPOINT)
+        return instance.get_url(endpoint, "request_token")
 
     @property
     def access_url(self):
         """Get access_token url according to OAuth 1.0 specs"""
-        return Services.get_instance().get_url(self.SERVICE, "access_token")
+        instance = Services.get_instance()
+        endpoint = instance.resolv(self.ENDPOINT)
+        return instance.get_url(endpoint, "access_token")
 
     @property
     def authorize_url(self):
         """Get authorize url according to OAuth 1.0 specs"""
-        return Services.get_instance().get_url(self.SERVICE, "authorize")
+        instance = Services.get_instance()
+        endpoint = instance.resolv(self.ENDPOINT)
+        return instance.get_url(endpoint, "authorize")
 
     @property
     def ca_certs(self):
         """Get certificates for this flow None to use defaults"""
-        return Services.get_instance().service(self.SERVICE).get("ca_certs")
+        instance = Services.get_instance()
+        endpoint = instance.resolv(self.ENDPOINT)
+        return instance.service(endpoint).get("ca_certs")
 
     @property
     #pylint: disable-msg=W0201
