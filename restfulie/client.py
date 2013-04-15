@@ -76,7 +76,7 @@ class Client(object):
 
     # Allow to translate a Target variable into a valid service tag
     # already registered in session singleton instance
-    ENDPOINTS = {}
+    ENTRY_POINTS = {}
 
     def __init__(self, credentials=None):
         # register services
@@ -84,9 +84,9 @@ class Client(object):
         services.set_services(self.SERVICES)
 
         # register endpoints, if any
-        for endpoint, targets in self.ENDPOINTS.iteritems():
-            for target, service in targets.iteritems():
-                services.register(endpoint, target, service)
+        for target, endpoints in self.ENTRY_POINTS.iteritems():
+            for endpoint, service in endpoints.iteritems():
+                services.register(target, endpoint, service)
 
         # create credentials
         self._config = credentials or Credentials()

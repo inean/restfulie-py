@@ -52,7 +52,7 @@ class Sleipnir(Client):
     # Service Map. It allow us to add a level of indirection to
     # diverge between functionality (target key), and WHO provides
     # that functionality
-    ENDPOINTS = {
+    ENTRY_POINTS = {
         'sleipnir': {
             'apiv1': 'sleipnir/api1',
             'oauth': 'sleipnir/oauth1',
@@ -67,7 +67,7 @@ class SleipnirAuth(OAuthMixin):
     # Base Url. OAuthMixin use target directly to resolve agaist
     # Services singleton. We delegate service registration to Client
     # (Sleipnir) object, in this case
-    ENDPOINT = "sleipnir/oauth"
+    ENTRY_POINT = "sleipnir/oauth"
 
     # Auth mechanism implemented
     implements = "sleipnir"
@@ -82,7 +82,7 @@ class SleipnirMapper(BaseMapper):
         """Extend BaseAPI class with custom values"""
 
         # Base Url. In this case we use
-        ENDPOINT = "sleipnir/apiv1"
+        ENTRY_POINT = "sleipnir/apiv1"
 
         # Our api is json based only
         FLAVORS = ["json"]
@@ -97,7 +97,7 @@ class SleipnirMapper(BaseMapper):
 
         # Base Url. In this case we use oauth to enforce security on
         # handshake
-        ENDPOINT = "sleipnir/oauth"
+        ENTRY_POINT = "sleipnir/oauth"
 
         CHAIN = auth_chain
 

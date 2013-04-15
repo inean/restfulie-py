@@ -67,7 +67,7 @@ class OAuthMixin(AuthMixin):
     # Defines url from Services sigleton to be used. On __init__
     # implementation, we could register those services inside Services
     # instance
-    ENDPOINT = None
+    ENTRY_POINT = None
 
     # Auth mechanism implemented
     implements = "oauth"
@@ -76,28 +76,28 @@ class OAuthMixin(AuthMixin):
     def request_url(self):
         """Get request_token url according to OAuth 1.0 specs"""
         instance = Services.get_instance()
-        endpoint = instance.resolv(self.ENDPOINT)
+        endpoint = instance.resolv(self.ENTRY_POINT)
         return instance.get_url(endpoint, "request_token")
 
     @property
     def access_url(self):
         """Get access_token url according to OAuth 1.0 specs"""
         instance = Services.get_instance()
-        endpoint = instance.resolv(self.ENDPOINT)
+        endpoint = instance.resolv(self.ENTRY_POINT)
         return instance.get_url(endpoint, "access_token")
 
     @property
     def authorize_url(self):
         """Get authorize url according to OAuth 1.0 specs"""
         instance = Services.get_instance()
-        endpoint = instance.resolv(self.ENDPOINT)
+        endpoint = instance.resolv(self.ENTRY_POINT)
         return instance.get_url(endpoint, "authorize")
 
     @property
     def ca_certs(self):
         """Get certificates for this flow None to use defaults"""
         instance = Services.get_instance()
-        endpoint = instance.resolv(self.ENDPOINT)
+        endpoint = instance.resolv(self.ENTRY_POINT)
         return instance.service(endpoint).get("ca_certs")
 
     @property

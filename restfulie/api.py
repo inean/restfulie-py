@@ -49,7 +49,7 @@ class BaseAPI(object):
 
     # There's to ways to resolve a service by a service. Use
     # TARGET/Endpoint combination or...
-    ENDPOINT = None
+    ENTRY_POINT = None
 
     # use Service Name directly on Service tag
     SERVICE = None
@@ -81,14 +81,14 @@ class BaseAPI(object):
     def __base_url(cls, default="", **kwargs):
         """Get base url for Target / Service combination"""
         services = Services.get_instance()
-        endpoint = services.resolv(cls.ENDPOINT, cls.SERVICE)
+        endpoint = services.resolv(cls.ENTRY_POINT, cls.SERVICE)
         return services.get_url(endpoint, **kwargs) or default
 
     @classmethod
     def __cacert(cls):
         """Get cacert, if any for Target / Service combination"""
         services = Services.get_instance()
-        endpoint = services.resolv(cls.ENDPOINT, cls.SERVICE)
+        endpoint = services.resolv(cls.ENTRY_POINT, cls.SERVICE)
         return Services.get_instance().service(endpoint).get('ca_certs')
 
     # pylint: disable-msg=W0142
@@ -96,7 +96,7 @@ class BaseAPI(object):
     def __secure(cls, base):
         """Get secure tuple overrided if required"""
         services = Services.get_instance()
-        endpoint = services.resolv(cls.ENDPOINT, cls.SERVICE)
+        endpoint = services.resolv(cls.ENTRY_POINT, cls.SERVICE)
         return Services.get_instance().get_secure(endpoint, *base)
 
     #pylint: disable-msg=C0301, R0913, W0142
