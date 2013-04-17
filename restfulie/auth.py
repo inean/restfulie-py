@@ -149,18 +149,24 @@ class OAuthMixin(AuthMixin):
 
     def _fetch_sync(self, consumer, token, http_request, **kwargs):
         """Send request sync"""
-        uri      = http_request['uri']
-        request  = self._get_request(consumer, token, uri, **kwargs)
-        response = HTTPClient().fetch(
-            uri,
-            method=request.method,
-            body=kwargs.get("body", ''),
-            headers=request.to_header(),
-            use_gzip=http_request.get('use_gzip'),
-            ca_certs=http_request.get('ca_certs'),
-            connect_timeout=http_request.get('connect_timeout'),
-            request_timeout=http_request.get('request_timeout'),
-        )
+        uri     = http_request['uri']
+        request = self._get_request(consumer, token, uri, **kwargs)
+
+        try:
+            response = HTTPClient().fetch(
+                uri,
+                method=request.method,
+                body=kwargs.get("body", ''),
+                headers=request.to_header(),
+                use_gzip=http_request.get('use_gzip'),
+                ca_certs=http_request.get('ca_certs'),
+                connect_timeout=http_request.get('connect_timeout'),
+                request_timeout=http_request.get('request_timeout'),
+            )
+        except Exception, err:
+            if not isinstance(err, HTTPError):
+                err = HTTPError(599, repr(err))
+            raise err
         return Token.from_string(response.buffer.read())
 
     ##
