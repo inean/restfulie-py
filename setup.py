@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 setup(name="sleipnir-restfulie",
-      version="0.18",
+      version="0.19",
       description="Write hypermedia aware resource based clients and servers",
       author="Carlos Martín",
       author_email="inean.es@gmail.com",
